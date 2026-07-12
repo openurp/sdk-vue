@@ -10,9 +10,11 @@ export interface OpenurpApiClientOptions {
 
 type RequestHeadersProvider = () => HeadersInit | undefined
 type UrpSidProvider = () => string | null | undefined
+type ApiBaseUrlProvider = () => string | null | undefined
 
 let requestHeadersProvider: RequestHeadersProvider | undefined
 let urpSidProvider: UrpSidProvider | undefined
+let apiBaseUrlProvider: ApiBaseUrlProvider | undefined
 
 export function setOpenurpRequestHeaders(provider: RequestHeadersProvider | undefined) {
   requestHeadersProvider = provider
@@ -22,13 +24,17 @@ export function setOpenurpUrpSid(provider: UrpSidProvider | undefined) {
   urpSidProvider = provider
 }
 
+export function setOpenurpApiBaseUrl(provider: ApiBaseUrlProvider | undefined) {
+  apiBaseUrlProvider = provider
+}
+
 export class OpenurpApiClient {
   private readonly baseUrl: string
   private readonly headers?: HeadersInit
   private readonly fetcher: typeof fetch
 
   constructor(options: OpenurpApiClientOptions = {}) {
-    this.baseUrl = normalizeUrl(options.baseUrl ?? getDefaultApiBaseUrl())
+    this.baseUrl = normalizeUrl(options.baseUrl ?? apiBaseUrlProvider?.() ?? getDefaultApiBaseUrl())
     this.headers = options.headers
     this.fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init))
   }

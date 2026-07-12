@@ -27,7 +27,7 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="panelVisible" ref="panelRef" class="openurp-semester-panel" :style="panelStyle">
+      <div v-if="panelVisible" ref="panelRef" class="openurp-semester-panel" :class="{ 'is-compact': compact }" :style="panelStyle">
         <div class="openurp-semester-panel-head">
           <strong>{{ selectedLabel || activeSchoolYear || '请选择学年学期' }}</strong>
         </div>
@@ -106,6 +106,7 @@ const props = withDefaults(
     compact?: boolean
     cache?: boolean
     cacheTtl?: number
+    filter?: string
     autoSelect?: boolean
     closeOnSelect?: boolean
   }>(),
@@ -146,7 +147,7 @@ const selectedLabel = computed(() => formatSemester(selectedSemester.value))
 const triggerLabel = computed(() => props.compact && selectedSemester.value ? formatCompactSemester(selectedSemester.value) : selectedLabel.value)
 const currentSemester = computed(() => resolveCurrentSemester(semesters.value))
 const currentSchoolYear = computed(() => currentSemester.value?.schoolYear || '')
-const requestPath = computed(() => props.projectId ? `/api/base/semesters/${props.projectId}.json` : '')
+const requestPath = computed(() => props.projectId ? `/api/base/semesters/${props.projectId}.json?filter=${props.filter ?? 'active'}` : '')
 
 const yearGroups = computed<YearGroup[]>(() => {
   const groups = new Map<string, Semester[]>()
@@ -173,13 +174,13 @@ watch(() => [props.projectId, props.apiBaseUrl], () => {
 watch(selectedSemester, (semester) => {
   if (!semester) return
   activeSchoolYear.value = semester.schoolYear
-  writeStoredSemester(semester)
 })
 
 onMounted(() => {
   document.addEventListener('pointerdown', closeOnOutside)
   window.addEventListener('resize', updatePanelPosition)
   window.addEventListener('scroll', updatePanelPosition, true)
+  applyStoredSemesterId()
   void reload()
 })
 onBeforeUnmount(() => {
@@ -228,6 +229,7 @@ async function reload() {
   try {
     semesters.value = await listSemesters(props.projectId, {
       apiBaseUrl: props.apiBaseUrl,
+      filter: props.filter,
       cache: props.cache,
       cacheTtl: props.cacheTtl,
     })
@@ -257,20 +259,18 @@ function applyDefaultSemester() {
   if (props.autoSelect) {
     emit('update:modelValue', defaultSemester.id)
     emit('change', defaultSemester)
-    writeStoredSemester(defaultSemester)
   }
+}
+
+function applyStoredSemesterId() {
+  if (props.modelValue !== '' && props.modelValue !== undefined && props.modelValue !== null) return
+  const storedSemesterId = readStoredSemesterId()
+  if (storedSemesterId) emit('update:modelValue', storedSemesterId)
 }
 
 function readStoredSemesterId() {
   if (!props.syncDefault || !props.storageKey || typeof localStorage === 'undefined') return ''
-  const raw = localStorage.getItem(props.storageKey)
-  if (!raw) return ''
-  try {
-    const semester = JSON.parse(raw) as { id?: string | number | null }
-    return semester.id === undefined || semester.id === null ? '' : String(semester.id)
-  } catch {
-    return raw
-  }
+  return localStorage.getItem(props.storageKey) || ''
 }
 
 function writeStoredSemester(semester: Semester) {
@@ -294,7 +294,7 @@ function updatePanelPosition() {
   const trigger = triggerRef.value
   if (!trigger || !panelVisible.value) return
   const rect = trigger.getBoundingClientRect()
-  const width = Math.min(420, window.innerWidth - 32)
+  const width = Math.min(props.compact ? 300 : 420, window.innerWidth - 32)
   const left = Math.min(Math.max(16, rect.left), window.innerWidth - width - 16)
   panelStyle.value = {
     position: 'fixed',
@@ -344,9 +344,10 @@ function formatCompactSemester(semester: Semester) {
 }
 
 .openurp-semester-picker.is-compact .openurp-semester-trigger {
-  height: 28px;
+  height: 26px;
   padding-right: 7px;
   padding-left: 7px;
+  font-size: 13px;
 }
 
 .openurp-semester-picker.is-compact .openurp-semester-trigger-actions {
@@ -423,6 +424,51 @@ function formatCompactSemester(semester: Semester) {
   height: 36px;
   padding: 0 12px;
   border-bottom: 1px solid #edf0f5;
+}
+
+.openurp-semester-panel.is-compact {
+  font-size: 13px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-panel-head {
+  height: 30px;
+  padding: 0 10px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-body {
+  grid-template-columns: minmax(0, 1.7fr) minmax(82px, 0.63fr);
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-section {
+  padding: 6px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-card {
+  padding-right: 7px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-term-section {
+  padding-left: 7px;
+  border-left: 1px solid #edf0f5;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-years {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-years button {
+  min-height: 28px;
+  padding: 3px 5px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-options {
+  gap: 4px;
+}
+
+.openurp-semester-panel.is-compact .openurp-semester-options button {
+  min-height: 34px;
+  padding: 5px 7px;
 }
 
 .openurp-semester-panel-head strong {
