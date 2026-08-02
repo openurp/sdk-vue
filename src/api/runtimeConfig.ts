@@ -6,6 +6,8 @@ export interface OpenurpRuntimeConfigPayload {
   cas_auth_login_url?: string
   cas_login_url?: string
   cas_logout_url?: string
+  /** Domain / org logo for SPA shell brand (e.g. from configs.json). */
+  logoUrl?: string
 }
 
 export interface OpenurpThemeConfigPayload {
@@ -43,6 +45,7 @@ export interface OpenurpRuntimeConfig {
   readonly appBasePath: string
   readonly apiBaseUrl: string
   readonly emsBaseUrl: string
+  readonly logoUrl: string
   readonly themeConfig: OpenurpThemeConfigPayload | null
   readonly casServerBaseUrl: string
   readonly casAuthLoginUrl: string
@@ -53,6 +56,7 @@ export interface OpenurpRuntimeConfig {
   setEmsBaseUrl(url: string): void
   setCasBaseUrl(url: string): void
   setCasUrls(config: OpenurpRuntimeConfigPayload): void
+  setLogoUrl(url: string): void
   setThemeConfig(config: OpenurpThemeConfigPayload | null): void
   getApiUrl(path: string, urpSid?: string | null): string
   getCasUrl(path: string): string
@@ -92,6 +96,7 @@ export async function loadOpenurpRuntimeConfigs(options: LoadOpenurpRuntimeConfi
 export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions): OpenurpRuntimeConfig {
   let apiBaseUrl = normalizeUrl(options.apiBaseUrl || getCurrentOrigin())
   let emsBaseUrl = apiBaseUrl
+  let logoUrl = ''
   let themeConfig: OpenurpThemeConfigPayload | null = null
   let casServerBaseUrl = normalizeUrl(options.casBaseUrl || '')
   let casAuthLoginUrl = options.casAuthLoginUrl || ''
@@ -109,6 +114,10 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
 
     get emsBaseUrl() {
       return emsBaseUrl
+    },
+
+    get logoUrl() {
+      return logoUrl
     },
 
     get themeConfig() {
@@ -133,6 +142,7 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
 
     applyConfig(config: OpenurpRuntimeConfigPayload): void {
       if (config.ems_base) runtimeConfig.setEmsBaseUrl(config.ems_base)
+      if (config.logoUrl) runtimeConfig.setLogoUrl(config.logoUrl)
       runtimeConfig.setCasUrls(config)
     },
 
@@ -154,6 +164,10 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
       if (config.cas_auth_login_url) casAuthLoginUrl = config.cas_auth_login_url
       if (config.cas_login_url) casLoginUrl = config.cas_login_url
       if (config.cas_logout_url) casLogoutUrl = config.cas_logout_url
+    },
+
+    setLogoUrl(url: string): void {
+      logoUrl = String(url || '').trim()
     },
 
     setThemeConfig(config: OpenurpThemeConfigPayload | null): void {

@@ -27,6 +27,7 @@ export interface OpenurpAuthOptions {
   casLogoutUrl: string | (() => string)
   tokenKey?: string
   userInfoKey?: string
+  clearLocalStorageOnLogout?: boolean
   sidName?: string
   logoutUrl?: string | (() => string)
   fetcher?: typeof fetch
@@ -59,8 +60,8 @@ export interface OpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurrentUs
   }
 }
 
-const defaultTokenKey = 'ems_auth_token'
-const defaultUserInfoKey = 'ems_user_info'
+const defaultTokenKey = 'beangle.ems.auth_token'
+const defaultUserInfoKey = 'beangle.ems.user_info'
 const defaultSidName = 'URP_SID'
 
 export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurrentUser>(options: OpenurpAuthOptions): OpenurpAuth<TUser> {
@@ -101,6 +102,10 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
     },
 
     clearAuth(): void {
+      if (options.clearLocalStorageOnLogout) {
+        localStorage.clear()
+        return
+      }
       localStorage.removeItem(options.tokenKey || defaultTokenKey)
       localStorage.removeItem(options.userInfoKey || defaultUserInfoKey)
     },
@@ -220,8 +225,7 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
       return currentUser.value
     }
 
-    currentUser.value = sessionService.getUserInfo()
-    if (!currentUser.value) currentUser.value = await sessionService.fetchCasUser()
+    currentUser.value = await sessionService.fetchCasUser()
     return currentUser.value
   }
 

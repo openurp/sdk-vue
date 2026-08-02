@@ -41,7 +41,7 @@ export class OpenurpApiClient {
 
   async request<T>(path: string, options: OpenurpRequestOptions = {}): Promise<T> {
     const { query, headers, ...init } = options
-    const response = await this.fetcher(this.buildUrl(path, query), {
+    const response = await this.fetcher(this.resolveUrl(path, query), {
       credentials: 'include',
       ...init,
       headers: this.buildHeaders(headers),
@@ -52,6 +52,11 @@ export class OpenurpApiClient {
     }
 
     return response.json() as Promise<T>
+  }
+
+  /** Build a request URL (path + query + optional URP_SID for cross-origin). */
+  resolveUrl(path: string, query?: OpenurpRequestOptions['query']): string {
+    return this.buildUrl(path, query)
   }
 
   private buildUrl(path: string, query?: OpenurpRequestOptions['query']) {

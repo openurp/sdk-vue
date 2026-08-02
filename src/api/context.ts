@@ -5,12 +5,13 @@ import { OpenurpApiClient } from './request'
 export interface ContextApiOptions {
   apiBaseUrl?: string
   cache?: boolean
+  refresh?: boolean
   cacheTtl?: number
   headers?: HeadersInit
   fetcher?: typeof fetch
 }
 
-const projectStorageKey = 'openurp.project.id'
+const projectStorageKey = 'beangle.ems.context.project_id'
 const projectCacheKey = 'openurp.cache.context.projects'
 const departmentCachePrefix = 'openurp.cache.context.departments'
 const contextCacheVersion = 2
@@ -42,7 +43,10 @@ export async function listContextProjects(options: ContextApiOptions = {}) {
     resource: 'context.projects',
     path: '/api/base/context/projects.json',
     normalize: normalizeProjects,
-    options,
+    options: {
+      ...options,
+      refresh: options.refresh ?? !getStoredProjectId(),
+    },
   })
 }
 
@@ -85,7 +89,7 @@ async function listCachedContextResource<T>(params: {
   const cacheEnabled = params.options.cache !== false
   const cached = cacheEnabled ? readLocalCache<T>(params.cacheKey) : { entry: null, expired: true }
 
-  const cachedEntry = cached.entry?.version === contextCacheVersion ? cached.entry : null
+  const cachedEntry = !params.options.refresh && cached.entry?.version === contextCacheVersion ? cached.entry : null
 
   if (cachedEntry && !cached.expired) return cachedEntry.items
 

@@ -1,3 +1,5 @@
 export * from './display'
 export * from './microApp'
+export * from './portalUi'
 export * from './semester'
+export * from './teachingWeek'
