@@ -1,5 +1,7 @@
 export { default as AppShell } from './AppShell.vue'
 export type { AppShellMenuItem, AppShellProfile } from './app-shell'
+export { default as AppShellLocaleToggle } from './AppShellLocaleToggle.vue'
+export { default as AppShellThemeToggle } from './AppShellThemeToggle.vue'
 export { default as CodePicker } from './CodePicker.vue'
 export { default as SemesterPicker } from './SemesterPicker.vue'
 export { default as StudentPicker } from './StudentPicker.vue'
