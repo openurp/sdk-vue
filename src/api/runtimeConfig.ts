@@ -167,7 +167,8 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
     },
 
     setLogoUrl(url: string): void {
-      logoUrl = String(url || '').trim()
+      const trimmed = String(url || '').trim()
+      logoUrl = /^file:/i.test(trimmed) ? '' : trimmed
     },
 
     setThemeConfig(config: OpenurpThemeConfigPayload | null): void {
