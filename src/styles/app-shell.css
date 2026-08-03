@@ -232,7 +232,8 @@
 }
 
 .bui-app-shell__locale-toggle,
-.bui-app-shell__theme-toggle {
+.bui-app-shell__theme-toggle,
+.bui-app-shell__fullscreen-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -249,7 +250,8 @@
 }
 
 .bui-app-shell__locale-toggle:hover,
-.bui-app-shell__theme-toggle:hover {
+.bui-app-shell__theme-toggle:hover,
+.bui-app-shell__fullscreen-toggle:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 

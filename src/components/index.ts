@@ -1,5 +1,6 @@
 export { default as AppShell } from './AppShell.vue'
 export type { AppShellMenuItem, AppShellProfile } from './app-shell'
+export { default as AppShellFullscreenToggle } from './AppShellFullscreenToggle.vue'
 export { default as AppShellLocaleToggle } from './AppShellLocaleToggle.vue'
 export { default as AppShellThemeToggle } from './AppShellThemeToggle.vue'
 export { default as CodePicker } from './CodePicker.vue'

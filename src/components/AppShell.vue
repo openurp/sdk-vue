@@ -73,6 +73,7 @@
             :mode="displayThemeMode"
             @update:theme-mode="$emit('update:theme-mode', $event)"
           />
+          <AppShellFullscreenToggle v-if="fullscreen" />
           <slot name="topbar-extra" />
           <t-dropdown
             v-if="userName || $slots.user"
@@ -105,6 +106,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { AppShellMenuItem, AppShellProfile } from './app-shell'
+import AppShellFullscreenToggle from './AppShellFullscreenToggle.vue'
 import AppShellLocaleToggle from './AppShellLocaleToggle.vue'
 import AppShellThemeToggle from './AppShellThemeToggle.vue'
 import '../styles/app-shell.css'
@@ -126,6 +128,7 @@ const props = withDefaults(
     profileId?: string | number
     locale?: string
     themeMode?: 'light' | 'dark'
+    fullscreen?: boolean
   }>(),
   {
     brandMark: '',
@@ -141,6 +144,7 @@ const props = withDefaults(
     profileId: undefined,
     locale: undefined,
     themeMode: undefined,
+    fullscreen: true,
   },
 )
 
