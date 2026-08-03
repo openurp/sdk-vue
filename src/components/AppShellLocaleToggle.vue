@@ -6,7 +6,9 @@
     :title="locale === 'zh-CN' ? 'Switch to English' : '切换到中文'"
     @click="onToggle"
   >
-    <span aria-hidden="true">{{ locale === 'zh-CN' ? '中' : 'En' }}</span>
+    <span class="bui-app-shell__locale-toggle__glyph" aria-hidden="true">
+      {{ locale === 'zh-CN' ? '中' : 'En' }}
+    </span>
   </button>
 </template>
 

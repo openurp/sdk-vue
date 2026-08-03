@@ -231,48 +231,41 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-.bui-app-shell__locale-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.25rem;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.bui-app-shell__locale-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
+.bui-app-shell__locale-toggle,
 .bui-app-shell__theme-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 0.25rem;
+  border-radius: 4px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
+  color: inherit;
   cursor: pointer;
+  opacity: 0.92;
 }
 
+.bui-app-shell__locale-toggle:hover,
 .bui-app-shell__theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.bui-app-shell__locale-toggle__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
 }
 
 .bui-app-shell__profile {
