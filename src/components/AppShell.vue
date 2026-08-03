@@ -63,6 +63,16 @@
               <span class="bui-app-shell__profile-caret" aria-hidden="true" />
             </button>
           </t-dropdown>
+          <AppShellLocaleToggle
+            v-if="displayLocale"
+            :locale="displayLocale"
+            @update:locale="$emit('update:locale', $event)"
+          />
+          <AppShellThemeToggle
+            v-if="displayThemeMode"
+            :mode="displayThemeMode"
+            @update:theme-mode="$emit('update:theme-mode', $event)"
+          />
           <slot name="topbar-extra" />
           <t-dropdown
             v-if="userName || $slots.user"
@@ -95,6 +105,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { AppShellMenuItem, AppShellProfile } from './app-shell'
+import AppShellLocaleToggle from './AppShellLocaleToggle.vue'
+import AppShellThemeToggle from './AppShellThemeToggle.vue'
 import '../styles/app-shell.css'
 
 const props = withDefaults(
@@ -112,6 +124,8 @@ const props = withDefaults(
     logoutLabel?: string
     profiles?: AppShellProfile[]
     profileId?: string | number
+    locale?: string
+    themeMode?: 'light' | 'dark'
   }>(),
   {
     brandMark: '',
@@ -125,6 +139,8 @@ const props = withDefaults(
     logoutLabel: 'Logout',
     profiles: () => [],
     profileId: undefined,
+    locale: undefined,
+    themeMode: undefined,
   },
 )
 
@@ -132,6 +148,8 @@ const emit = defineEmits<{
   logout: []
   navigate: [path: string]
   'profile-change': [id: string | number]
+  'update:locale': [locale: string]
+  'update:theme-mode': [mode: 'light' | 'dark']
 }>()
 
 const route = useRoute()
@@ -141,6 +159,14 @@ const resolvedActivePath = computed(() => {
   if (props.activePath) return props.activePath
   return route.path || '/'
 })
+
+const displayLocale = computed(() =>
+  props.locale === 'zh-CN' || props.locale === 'en-US' ? props.locale : undefined,
+)
+
+const displayThemeMode = computed(() =>
+  props.themeMode === 'light' || props.themeMode === 'dark' ? props.themeMode : undefined,
+)
 
 const userInitial = computed(() => {
   const name = props.userName?.trim()
