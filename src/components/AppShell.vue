@@ -1,7 +1,7 @@
 <template>
   <div class="bui-app-shell">
     <aside class="bui-app-shell__aside">
-      <a class="bui-app-shell__brand" :href="portalHref || undefined" @click="onBrandClick">
+      <a class="bui-app-shell__brand" :href="homeHref" @click.prevent="onBrandClick">
         <img
           v-if="logoUrl"
           class="bui-app-shell__brand-logo"
@@ -129,6 +129,7 @@ const props = withDefaults(
     locale?: string
     themeMode?: 'light' | 'dark'
     fullscreen?: boolean
+    homePath?: string
   }>(),
   {
     brandMark: '',
@@ -145,6 +146,7 @@ const props = withDefaults(
     locale: undefined,
     themeMode: undefined,
     fullscreen: true,
+    homePath: undefined,
   },
 )
 
@@ -163,6 +165,8 @@ const resolvedActivePath = computed(() => {
   if (props.activePath) return props.activePath
   return route.path || '/'
 })
+
+const homeHref = computed(() => props.homePath || props.menus[0]?.path || '/')
 
 const displayLocale = computed(() =>
   props.locale === 'zh-CN' || props.locale === 'en-US' ? props.locale : undefined,
@@ -202,11 +206,8 @@ function onNavigate(path: string) {
   if (route.path !== path) void router.push(path)
 }
 
-function onBrandClick(event: MouseEvent) {
-  if (!props.portalHref) {
-    event.preventDefault()
-    onNavigate(props.menus[0]?.path || '/')
-  }
+function onBrandClick() {
+  onNavigate(props.homePath || props.menus[0]?.path || '/')
 }
 
 const userMenuOptions = computed(() => [
