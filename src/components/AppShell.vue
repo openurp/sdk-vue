@@ -75,6 +75,14 @@
           />
           <AppShellFullscreenToggle v-if="fullscreen" />
           <slot name="topbar-extra" />
+          <button
+            v-if="loginLabel && !userName && !$slots.user"
+            type="button"
+            class="bui-app-shell__login"
+            @click="emit('login')"
+          >
+            {{ loginLabel }}
+          </button>
           <t-dropdown
             v-if="userName || $slots.user"
             trigger="click"
@@ -124,6 +132,7 @@ const props = withDefaults(
     portalLabel?: string
     navSection?: string
     logoutLabel?: string
+    loginLabel?: string
     profiles?: AppShellProfile[]
     profileId?: string | number
     locale?: string
@@ -141,6 +150,7 @@ const props = withDefaults(
     portalLabel: 'Portal',
     navSection: '',
     logoutLabel: 'Logout',
+    loginLabel: 'Login',
     profiles: () => [],
     profileId: undefined,
     locale: undefined,
@@ -152,6 +162,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   logout: []
+  login: []
   navigate: [path: string]
   'profile-change': [id: string | number]
   'update:locale': [locale: string]
@@ -203,7 +214,7 @@ const profileMenuOptions = computed(() =>
 
 function onNavigate(path: string) {
   emit('navigate', path)
-  if (route.path !== path) void router.push(path)
+  void router.push(path)
 }
 
 function onBrandClick() {

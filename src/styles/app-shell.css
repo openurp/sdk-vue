@@ -255,6 +255,26 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+.bui-app-shell__login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--appshell-navbar-bg, #3c8dbc);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bui-app-shell__login:hover {
+  background: #fff;
+}
+
 .bui-app-shell__locale-toggle__glyph {
   display: inline-flex;
   align-items: center;
