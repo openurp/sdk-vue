@@ -42,7 +42,7 @@ export interface OpenurpSessionService<TUser extends OpenurpCurrentUser = Openur
   getAuthHeaders(contentType?: string): Record<string, string>
   login(redirectUrl?: string): void
   requireLogin(redirectUrl?: string): void
-  logout(): Promise<void>
+  logout(service?: string): Promise<void>
   getUserInfoBySid(sid: string): Promise<TUser | null>
   fetchCasUser(params?: Record<string, string>): Promise<TUser | null>
 }
@@ -56,7 +56,7 @@ export interface OpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurrentUs
     currentUser: Ref<TUser | null>
     authReady: Ref<boolean>
     handleLogin: () => void
-    handleLogout: () => Promise<void>
+    handleLogout: (service?: string) => Promise<void>
   }
 }
 
@@ -129,7 +129,7 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
       this.login(redirectUrl)
     },
 
-    async logout(): Promise<void> {
+    async logout(service?: string): Promise<void> {
       try {
         const logoutUrl = options.logoutUrl ? readValue(options.logoutUrl) : ''
         if (logoutUrl) {
@@ -148,8 +148,8 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
         // Ignore logout transport errors and continue local cleanup.
       } finally {
         this.clearAuth()
-        const serviceUrl = encodeURIComponent(getServiceUrl())
-        window.location.href = `${readValue(options.casLogoutUrl)}?service=${serviceUrl}`
+        const redirectUrl = encodeURIComponent(service || getServiceUrl())
+        window.location.href = `${readValue(options.casLogoutUrl)}?service=${redirectUrl}`
       }
     },
 
@@ -249,8 +249,8 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
       sessionService.login()
     }
 
-    const handleLogout = async () => {
-      await sessionService.logout()
+    const handleLogout = async (service?: string) => {
+      await sessionService.logout(service)
     }
 
     onMounted(() => {

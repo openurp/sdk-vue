@@ -19,6 +19,28 @@ export interface OpenurpThemeConfigPayload {
   [key: string]: unknown
 }
 
+export interface OpenurpDomainOrgConfig {
+  code?: string | number
+  name?: string
+  id?: number
+  shortName?: string
+  wwwUrl?: string
+  logoUrl?: string
+}
+
+/**
+ * 应用域信息（来自平台 `domains.json`）。
+ * `title` 可作为系统名，`logoUrl` 可作为品牌 logo。
+ */
+export interface OpenurpDomainConfigPayload {
+  hostname?: string
+  org?: OpenurpDomainOrgConfig
+  name?: string
+  id?: number
+  title?: string
+  logoUrl?: string
+}
+
 export interface OpenurpRuntimeConfigOptions {
   appBasePath: string
   apiBaseUrl?: string
@@ -46,6 +68,8 @@ export interface OpenurpRuntimeConfig {
   readonly apiBaseUrl: string
   readonly emsBaseUrl: string
   readonly logoUrl: string
+  readonly domainConfig: OpenurpDomainConfigPayload | null
+  readonly appTitle: string
   readonly themeConfig: OpenurpThemeConfigPayload | null
   readonly casServerBaseUrl: string
   readonly casAuthLoginUrl: string
@@ -57,6 +81,7 @@ export interface OpenurpRuntimeConfig {
   setCasBaseUrl(url: string): void
   setCasUrls(config: OpenurpRuntimeConfigPayload): void
   setLogoUrl(url: string): void
+  setDomainConfig(config: OpenurpDomainConfigPayload | null): void
   setThemeConfig(config: OpenurpThemeConfigPayload | null): void
   getApiUrl(path: string, urpSid?: string | null): string
   getCasUrl(path: string): string
@@ -67,6 +92,7 @@ export interface OpenurpRuntimeConfig {
 }
 
 export const openurpThemeConfigPath = '/api/platform/config/themes.json'
+export const openurpDomainsConfigPath = '/api/platform/config/domains.json'
 
 export async function loadOpenurpRuntimeConfigs(options: LoadOpenurpRuntimeConfigsOptions = {}): Promise<LoadedOpenurpRuntimeConfigs> {
   const fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init))
@@ -93,10 +119,33 @@ export async function loadOpenurpRuntimeConfigs(options: LoadOpenurpRuntimeConfi
   return result
 }
 
+export interface LoadOpenurpDomainConfigOptions {
+  emsBaseUrl?: string
+  fetcher?: typeof fetch
+  warn?: (message: string, error: unknown) => void
+}
+
+/**
+ * 从平台加载当前应用的域信息：`{emsBase}/api/platform/config/domains.json`。
+ * 返回的 `title` 可作为系统名，`logoUrl` 可作为品牌 logo。
+ * 加载失败返回 null，不抛异常。
+ */
+export async function loadOpenurpDomainConfig(options: LoadOpenurpDomainConfigOptions = {}): Promise<OpenurpDomainConfigPayload | null> {
+  const fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init))
+  const baseUrl = normalizeUrl(options.emsBaseUrl || getCurrentOrigin())
+  try {
+    return await fetchJson<OpenurpDomainConfigPayload>(fetcher, joinUrl(baseUrl, openurpDomainsConfigPath))
+  } catch (error) {
+    options.warn?.('平台域名配置加载失败，使用本地系统名', error)
+    return null
+  }
+}
+
 export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions): OpenurpRuntimeConfig {
   let apiBaseUrl = normalizeUrl(options.apiBaseUrl || getCurrentOrigin())
   let emsBaseUrl = apiBaseUrl
   let logoUrl = ''
+  let domainConfig: OpenurpDomainConfigPayload | null = null
   let themeConfig: OpenurpThemeConfigPayload | null = null
   let casServerBaseUrl = normalizeUrl(options.casBaseUrl || '')
   let casAuthLoginUrl = options.casAuthLoginUrl || ''
@@ -118,6 +167,14 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
 
     get logoUrl() {
       return logoUrl
+    },
+
+    get domainConfig() {
+      return domainConfig
+    },
+
+    get appTitle() {
+      return domainConfig?.title || ''
     },
 
     get themeConfig() {
@@ -143,6 +200,7 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
     applyConfig(config: OpenurpRuntimeConfigPayload): void {
       if (config.ems_base) runtimeConfig.setEmsBaseUrl(config.ems_base)
       if (config.logoUrl) runtimeConfig.setLogoUrl(config.logoUrl)
+      else if (domainConfig?.logoUrl) runtimeConfig.setLogoUrl(domainConfig.logoUrl)
       runtimeConfig.setCasUrls(config)
     },
 
@@ -169,6 +227,13 @@ export function createOpenurpRuntimeConfig(options: OpenurpRuntimeConfigOptions)
     setLogoUrl(url: string): void {
       const trimmed = String(url || '').trim()
       logoUrl = /^file:/i.test(trimmed) ? '' : trimmed
+    },
+
+    setDomainConfig(config: OpenurpDomainConfigPayload | null): void {
+      domainConfig = config
+      if (config?.title && !logoUrl && config.logoUrl) {
+        runtimeConfig.setLogoUrl(config.logoUrl)
+      }
     },
 
     setThemeConfig(config: OpenurpThemeConfigPayload | null): void {
