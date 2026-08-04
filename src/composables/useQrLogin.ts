@@ -167,6 +167,10 @@ export function useQrLogin(options: UseQrLoginOptions): UseQrLogin {
           if (status.value === 'pending' || status.value === 'scanned') {
             status.value = 'expired'
             stopAllListeners()
+            // 本地定时器到期也自动刷新（SSE 未推送 expired 的兜底路径）
+            if (autoRefreshOnExpired) {
+              void refresh()
+            }
           }
         }, wait)
       }
