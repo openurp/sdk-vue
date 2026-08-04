@@ -91,22 +91,22 @@ function onChange(event: Event) {
   min-width: 0;
   height: 32px;
   padding: 0 28px 0 9px;
-  color: #1f2937;
-  background: #fff;
-  border: 1px solid #dcdfe6;
+  color: var(--openurp-code-picker-color, var(--td-text-color-primary, #1f2937));
+  background: var(--openurp-code-picker-bg, var(--td-bg-color-component, #fff));
+  border: 1px solid var(--openurp-code-picker-border, var(--td-border-level-1-color, #dcdfe6));
   border-radius: 3px;
   box-sizing: border-box;
   font: inherit;
 }
 
 .openurp-code-picker:focus {
-  border-color: #0052d9;
+  border-color: var(--openurp-code-picker-focus, var(--td-brand-color, #0052d9));
   outline: none;
 }
 
 .openurp-code-picker:disabled {
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: var(--td-text-color-disabled, #9ca3af);
+  background: var(--td-bg-color-component-disabled, #f3f4f6);
   cursor: not-allowed;
 }
 

@@ -23,10 +23,15 @@ export function isWujieMicroApp(): boolean {
   return new URLSearchParams(window.location.search).get('micro') === '1'
 }
 
+/** Returns true when actually inside a real Wujie sandbox (not `?micro=1` testing). */
+function isRealWujie(): boolean {
+  return !!(window.__POWERED_BY_WUJIE__ || window.__WUJIE || window.__WUJIE_PUBLIC_PATH__)
+}
+
 /** Registers Wujie lifecycle hooks and mounts immediately when running standalone. */
 export function registerWujieApp(lifecycles: WujieAppLifecycles): void {
   if (typeof window === 'undefined') return
-  if (isWujieMicroApp()) {
+  if (isRealWujie()) {
     window.__WUJIE_MOUNT = lifecycles.mount
     window.__WUJIE_UNMOUNT = lifecycles.unmount
   } else {
