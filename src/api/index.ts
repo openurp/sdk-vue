@@ -1,5 +1,6 @@
 export * from './code'
 export * from './context'
+export * from './permissions'
 export * from './request'
 export * from './semester'
 export * from './student'

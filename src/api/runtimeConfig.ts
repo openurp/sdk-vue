@@ -53,7 +53,11 @@ export interface OpenurpRuntimeConfigOptions {
 export interface LoadOpenurpRuntimeConfigsOptions {
   appConfigPath?: string
   apiBaseUrl?: string
-  themeConfigPath?: string
+  /**
+   * 主题配置路径；传 `null` 时跳过主题配置加载（如 Wujie 模式下主题由宿主门户同步）。
+   * 不传时使用默认平台地址 `openurpThemeConfigPath`。
+   */
+  themeConfigPath?: string | null
   fetcher?: typeof fetch
   warn?: (message: string, error: unknown) => void
 }
@@ -110,10 +114,12 @@ export async function loadOpenurpRuntimeConfigs(options: LoadOpenurpRuntimeConfi
     }
   }
 
-  try {
-    result.themeConfig = await fetchJson<OpenurpThemeConfigPayload>(fetcher, joinUrl(apiBaseUrl, options.themeConfigPath || openurpThemeConfigPath))
-  } catch (error) {
-    options.warn?.('平台主题配置加载失败，继续使用默认主题', error)
+  if (options.themeConfigPath !== null) {
+    try {
+      result.themeConfig = await fetchJson<OpenurpThemeConfigPayload>(fetcher, joinUrl(apiBaseUrl, options.themeConfigPath || openurpThemeConfigPath))
+    } catch (error) {
+      options.warn?.('平台主题配置加载失败，继续使用默认主题', error)
+    }
   }
 
   return result
