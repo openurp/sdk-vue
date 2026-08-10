@@ -72,7 +72,7 @@
                 @click="chooseSemester(semester)"
               >
                 <span class="openurp-semester-name">{{ formatSemesterName(semester) }}</span>
-                <span v-if="formatSemesterRange(semester)" class="openurp-semester-range">{{ formatSemesterRange(semester) }}</span>
+                <span v-if="showRange && formatSemesterRange(semester)" class="openurp-semester-range">{{ formatSemesterRange(semester) }}</span>
               </button>
             </div>
           </section>
@@ -98,12 +98,16 @@ const props = withDefaults(
     modelValue?: string | number
     projectId?: string | number
     apiBaseUrl?: string
+    /** 外部已加载的学期列表；提供时直接使用，不再请求 `/api/base/semesters/{projectId}.json`。 */
+    semesters?: Semester[] | null
     storageKey?: string
     placeholder?: string
     disabled?: boolean
     clearable?: boolean
     syncDefault?: boolean
     compact?: boolean
+    /** 选项下方是否显示起止日期范围 */
+    showRange?: boolean
     cache?: boolean
     cacheTtl?: number
     filter?: string
@@ -116,6 +120,7 @@ const props = withDefaults(
     clearable: false,
     syncDefault: true,
     compact: false,
+    showRange: true,
     cache: true,
     autoSelect: true,
     closeOnSelect: true,
@@ -171,6 +176,10 @@ watch(() => [props.projectId, props.apiBaseUrl], () => {
   void reload()
 })
 
+watch(() => props.semesters, () => {
+  void reload()
+})
+
 watch(selectedSemester, (semester) => {
   if (!semester) return
   activeSchoolYear.value = semester.schoolYear
@@ -220,6 +229,18 @@ function clearSemester() {
 }
 
 async function reload() {
+  if (props.semesters) {
+    loading.value = true
+    error.value = ''
+    semesters.value = props.semesters
+    loadedKey.value = 'provided'
+    emit('loaded', semesters.value)
+    applyDefaultSemester()
+    loading.value = false
+    return
+  }
+  if (loadedKey.value === 'provided') loadedKey.value = ''
+
   if (!props.projectId) return
   const loadKey = `${props.apiBaseUrl || ''}:${props.projectId}`
   if (loadedKey.value === loadKey) return

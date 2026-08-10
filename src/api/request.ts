@@ -54,7 +54,7 @@ export class OpenurpApiClient {
     return response.json() as Promise<T>
   }
 
-  /** Build a request URL (path + query + optional URP_SID for cross-origin). */
+  /** Build a request URL (path + query + optional URP_SID for cross-origin or relative path). */
   resolveUrl(path: string, query?: OpenurpRequestOptions['query']): string {
     return this.buildUrl(path, query)
   }
@@ -69,14 +69,13 @@ export class OpenurpApiClient {
       }
     })
 
-    if (!this.baseUrl && path.startsWith('/')) {
-      return `${url.pathname}${url.search}${url.hash}`
-    }
-
+    const relative = !this.baseUrl && path.startsWith('/')
     const urpSid = urpSidProvider?.()
-    if (urpSid && isCrossOrigin(url)) {
+    if (urpSid && (relative || isCrossOrigin(url))) {
       url.searchParams.set('URP_SID', urpSid)
     }
+
+    if (relative) return `${url.pathname}${url.search}${url.hash}`
 
     return url.toString()
   }
