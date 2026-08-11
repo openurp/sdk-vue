@@ -1,6 +1,7 @@
 {
   "name": "@openurp/sdk-vue",
   "version": "0.0.2-SNAPSHOT",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "publishConfig": {
     "access": "public"
