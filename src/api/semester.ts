@@ -11,17 +11,20 @@ export interface SemesterApiOptions {
   fetcher?: typeof fetch
 }
 
-/** Learning API root for student-facing std endpoints. */
-export const LEARNING_API_PREFIX = '/api/edu/learning'
-
-/** Relative student semester JSON:API path (`?student.id=` is added by helpers). */
+/**
+ * 学生学年学期相对路径（`?student.id=` 由辅助函数追加）。
+ * 配合应用的 `apiBasePath`（或 `composeUrl`）组成完整接口路径，
+ * 例如 learning 为 `/api/edu/learning/std/semesters.jsonapi`。
+ */
 export const STUDENT_SEMESTERS_PATH = '/std/semesters.jsonapi'
-
-/** Full path: `/api/edu/learning/std/semesters.jsonapi`. */
-export const STUDENT_SEMESTERS_JSONAPI_PATH = `${LEARNING_API_PREFIX}${STUDENT_SEMESTERS_PATH}`
 
 export interface StudentSemesterApiOptions {
   apiBaseUrl?: string
+  /**
+   * 应用 API 基础路径前缀（如 learning 的 `/api/edu/learning`），
+   * 与 `STUDENT_SEMESTERS_PATH` 拼接得到完整接口路径。
+   */
+  apiBasePath?: string
   headers?: HeadersInit
   fetcher?: typeof fetch
   /**
@@ -32,8 +35,14 @@ export interface StudentSemesterApiOptions {
   urpSid?: string | null
 }
 
+/** 学生学年学期完整接口路径：`{apiBasePath}/std/semesters.jsonapi`。 */
+function studentSemestersPath(options: StudentSemesterApiOptions): string {
+  const prefix = (options.apiBasePath || '').trim().replace(/\/+$/, '')
+  return `${prefix}${STUDENT_SEMESTERS_PATH}`
+}
+
 /**
- * Build `/api/edu/learning/std/semesters.jsonapi?student.id={studentId}`
+ * Build `{apiBasePath}/std/semesters.jsonapi?student.id={studentId}`
  * (plus URP_SID when composed via `composeUrl` / cross-origin client).
  */
 export function getStudentSemestersUrl(
@@ -41,8 +50,9 @@ export function getStudentSemestersUrl(
   options: StudentSemesterApiOptions = {},
 ): string {
   const id = String(studentId)
+  const path = studentSemestersPath(options)
   if (options.composeUrl) {
-    const base = options.composeUrl(STUDENT_SEMESTERS_JSONAPI_PATH, options.urpSid)
+    const base = options.composeUrl(path, options.urpSid)
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}student.id=${encodeURIComponent(id)}`
   }
@@ -52,7 +62,7 @@ export function getStudentSemestersUrl(
     headers: options.headers,
     fetcher: options.fetcher,
   })
-  return client.resolveUrl(STUDENT_SEMESTERS_JSONAPI_PATH, { 'student.id': id })
+  return client.resolveUrl(path, { 'student.id': id })
 }
 
 /** Fetch the raw JSON:API payload for a student's enrollment semesters. */
@@ -60,6 +70,7 @@ export async function fetchStudentSemestersJsonApi(
   studentId: string | number,
   options: StudentSemesterApiOptions = {},
 ): Promise<unknown> {
+  const path = studentSemestersPath(options)
   if (options.composeUrl) {
     const url = getStudentSemestersUrl(studentId, options)
     const fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init))
@@ -82,7 +93,7 @@ export async function fetchStudentSemestersJsonApi(
     headers: options.headers,
     fetcher: options.fetcher,
   })
-  return client.request(STUDENT_SEMESTERS_JSONAPI_PATH, {
+  return client.request(path, {
     query: { 'student.id': studentId },
     headers: { Accept: 'application/vnd.api+json' },
     cache: 'no-store',
