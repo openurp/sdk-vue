@@ -1,6 +1,6 @@
 {
   "name": "@openurp/sdk-vue",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
   "exports": {
     ".": {
@@ -12,6 +12,7 @@
   "files": ["dist", "src"],
   "scripts": {
     "build": "vue-tsc --noEmit && vite build",
+    "prepublishOnly": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run"
   },
