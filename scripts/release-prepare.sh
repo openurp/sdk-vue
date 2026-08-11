@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #
-# 发布准备：develop → main 合并 + 测试门禁 + 版本号提升。
+# 发布准备（SNAPSHOT 模式）：
+#   develop 上构建/测试/发布 dry-run 通过 → 去掉 -SNAPSHOT → 提交并打 tag
+#   → 切 main 合并 develop → push main + tag
 # 用法：./scripts/release-prepare.sh [patch|minor|major]   （默认 patch）
+# 可用环境变量覆盖：BUILD_CMD / TEST_CMD / DRY_RUN_CMD
 #
 set -euo pipefail
 
@@ -14,47 +17,56 @@ case "$BUMP" in
   *) echo "版本参数只能是 patch|minor|major" >&2; exit 1 ;;
 esac
 
+BUILD_CMD="${BUILD_CMD:-pnpm build}"
+TEST_CMD="${TEST_CMD:-pnpm test}"
+DRY_RUN_CMD="${DRY_RUN_CMD:-pnpm publish --dry-run --no-git-checks}"
+
 log() { printf '\033[1;36m[release]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[release] 错误:\033[0m %s\n' "$*" >&2; exit 1; }
 
-# 1. 工作区必须干净
 if [ -n "$(git status --porcelain)" ]; then
   die "工作区有未提交改动，请先提交或暂存"
 fi
 
 START_BRANCH="$(git branch --show-current)"
-log "当前分支: $START_BRANCH"
-
-# 2. 确保 develop 最新
 if [ "$START_BRANCH" != "develop" ]; then
   log "切换到 develop"
   git checkout develop
 fi
 git pull --ff-only origin develop 2>/dev/null || log "develop 无远端跟踪或已最新（忽略 pull）"
 
-# 3. 切到 main 并合并 develop（保留发布合并记录）
+log "构建门禁: $BUILD_CMD"
+$BUILD_CMD
+log "测试门禁: $TEST_CMD"
+$TEST_CMD
+log "发布 dry-run: $DRY_RUN_CMD"
+$DRY_RUN_CMD
+
+VERSION="$(node -p "require('./package.json').version")"
+case "$VERSION" in
+  *-SNAPSHOT) ;;
+  *) die "当前版本 $VERSION 不是 -SNAPSHOT，请先在 develop 上把版本号改为 x-SNAPSHOT" ;;
+esac
+REL="${VERSION%-SNAPSHOT}"
+
+log "去掉 SNAPSHOT: $VERSION -> $REL"
+node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='$REL';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+git add package.json
+git commit -m "release: v$REL"
+git tag "v$REL"
+
 log "切换到 main 并合并 develop"
 git checkout main
 git pull --ff-only origin main 2>/dev/null || log "main 无远端跟踪或已最新（忽略 pull）"
-if ! git merge --no-ff develop -m "release: merge develop into main"; then
-  git checkout "$START_BRANCH" 2>/dev/null || true
+if ! git merge develop -m "release: v$REL"; then
+  git checkout develop 2>/dev/null || true
   die "合并冲突，请手动处理（git merge --abort 后处理冲突）"
 fi
 
-# 4. 测试门禁：失败则回滚合并并回到原分支
-log "运行测试: pnpm test"
-if ! pnpm test; then
-  log "测试未通过，回滚合并"
-  git merge --abort
-  git checkout "$START_BRANCH" 2>/dev/null || true
-  die "测试未通过，已回滚并回到 $START_BRANCH"
-fi
+log "推送 main 与 tag v$REL"
+git push origin main
+git push origin "v$REL"
 
-# 5. 在 main 上提升版本号（自动打 tag）
-log "提升版本号: npm version $BUMP"
-npm version "$BUMP"
-
-log "发布准备完成，当前在 main 分支。后续步骤："
-log "  1. pnpm publish（prepublishOnly 会自动构建）"
-log "  2. git push origin main && git push origin --tags"
-log "  3. git checkout develop && git merge main（回合并到 develop）"
+log "发布准备完成，当前在 main 分支。后续："
+log "  1. pnpm publish（发布正式版本 v$REL）"
+log "  2. 发布完成后执行 ./scripts/release-finish.sh $REL $BUMP（回 develop 并设置下一个 -SNAPSHOT）"
