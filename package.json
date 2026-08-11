@@ -13,6 +13,7 @@
   "scripts": {
     "build": "vue-tsc --noEmit && vite build",
     "prepublishOnly": "pnpm run build",
+    "release:prepare": "bash scripts/release-prepare.sh",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run"
   },
