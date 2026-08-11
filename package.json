@@ -1,6 +1,6 @@
 {
   "name": "@openurp/sdk-vue",
-  "version": "0.0.1-SNAPSHOT",
+  "version": "0.0.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -12,7 +12,10 @@
     },
     "./styles/app-shell.css": "./src/styles/app-shell.css"
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "vue-tsc --noEmit && vite build",
     "prepublishOnly": "pnpm run build",
