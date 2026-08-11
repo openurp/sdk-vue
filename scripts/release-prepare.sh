@@ -33,7 +33,10 @@ if [ "$START_BRANCH" != "develop" ]; then
   log "切换到 develop"
   git checkout develop
 fi
-git pull --ff-only origin develop 2>/dev/null || log "develop 无远端跟踪或已最新（忽略 pull）"
+log "更新 develop 并确保最新"
+if ! git pull --ff-only origin develop; then
+  die "develop 无法快进更新（本地与远端分叉或拉取失败），发布停止"
+fi
 
 log "构建门禁: $BUILD_CMD"
 $BUILD_CMD
