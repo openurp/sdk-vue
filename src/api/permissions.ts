@@ -3,12 +3,13 @@ import { computed, ref, type Ref } from 'vue'
 /**
  * 前端权限集成（通用）。
  *
- * 后端权限接口（如 `GET /api/edu/learning/permissions.json`）支持两种返回结构：
+ * 后端权限接口（路径由应用配置，如 learning 的 `GET /api/edu/learning/permissions.json`）支持两种返回结构：
  *
- * 扁平资源数组（推荐）：
+ * 扁平资源数组（推荐，每项是相对 `api_base` 的路径，拼接 `api_base` 即后端调用地址；
+ * 本应用形如 `/{studentId}/{ws}`）：
  *
  * ```json
- * ["/progresses", "/alternatives", "/course-type-changes", "/courses", "/grades", "/programs", "/exams"]
+ * ["/{studentId}/progresses", "/{studentId}/alternatives", "/{studentId}/course-type-changes", "/{studentId}/courses", "/{studentId}/grades", "/{studentId}/programs", "/{studentId}/exams"]
  * ```
  *
  * 或与项目 `permissions.json` 相同的路由结构：
@@ -20,8 +21,10 @@ import { computed, ref, type Ref } from 'vue'
  * - `route` 是前端路由（如 `/courses`、`/exams`），不在列表里的路由不显示对应菜单/入口。
  * - `resources` 是该路由下可访问的 API 资源；匹配时统一去掉 `resourcePrefix`
  *   （如 `/api/edu/learning`）前缀，因此两端都可以不带该前缀声明。
- * - 扁平数组中的每一项都是已授权的 API 资源；资源名与前端路由同名时（如 `alternatives`），
- *   前端视为对应路由可访问（`canRoute`/`can` 均生效），无需后端为子功能页单独下发 route。
+ * - 扁平数组中的每一项都是已授权的 API 资源（相对 `api_base` 的路径）。识别采用路径
+ *   尾部匹配，不依赖应用特有的 URL 形状（如 learning 的 `{studentId}` 前缀）：
+ *   `/{studentId}/courses` 尾部命中 `courses`，即视为路由 `/courses` 与资源 key `courses`
+ *   可访问（`canRoute`/`can` 均生效），无需后端为子功能页单独下发 route。
  *
  * 容错策略：权限接口尚未部署或请求失败时 fail-open（不隐藏任何功能），
  * 避免权限服务抖动导致整个前端不可用；后端始终是最终访问控制方。
@@ -32,7 +35,7 @@ export interface OpenurpRoutePermission {
   resources?: string[]
 }
 
-/** 扁平资源数组中的一项：已授权的 API 资源（相对 `resourcePrefix`，如 `/alternatives`）。 */
+/** 扁平资源数组中的一项：已授权的 API 资源（相对 `api_base` 的路径，如 `/{studentId}/courses`）。 */
 export type OpenurpPermissionResource = string
 
 export interface OpenurpPermissionsOptions {
@@ -40,7 +43,7 @@ export interface OpenurpPermissionsOptions {
   permissionsPath: string
   /**
    * API 资源前缀（如 `/api/edu/learning`）。
-   * `resources` 与前端声明的资源 key 匹配前统一去掉该前缀。
+   * 仅作防御性清理：resources 若带完整前缀时先去掉；识别本身按路径尾部匹配，不依赖该前缀。
    */
   resourcePrefix?: string
   /** 路由别名/子路由归一到权限声明的路由。 */
@@ -108,7 +111,7 @@ export function createOpenurpPermissions(options: OpenurpPermissionsOptions): Op
     return clean
   }
 
-  /** 规范化资源：去掉来源、`resourcePrefix` 前缀、query/hash 和首尾斜杠。 */
+  /** 规范化资源：去掉来源、`resourcePrefix` 前缀、query/hash 和首尾斜杠（保留应用特有占位段，识别走尾部匹配）。 */
   const normalizeResource = (value: string): string => {
     const path = value.trim().split(/[?#]/)[0].replace(/^https?:\/\/[^/]+/i, '')
     const prefix = (options.resourcePrefix || '').trim().replace(/^\/+/, '')
@@ -117,7 +120,7 @@ export function createOpenurpPermissions(options: OpenurpPermissionsOptions): Op
     return base.replace(/^\/+/, '').replace(/\/+$/, '')
   }
 
-  /** 路由 → 资源集合：含权限声明的 route，以及“资源即路由”推导出的子路由。 */
+  /** 路由结构下的 路由 → 资源集合（仅权限声明的 route）。 */
   const byRoute = computed(() => {
     const map = new Map<string, Set<string>>()
     for (const item of rawPermissions.value) {
@@ -125,31 +128,19 @@ export function createOpenurpPermissions(options: OpenurpPermissionsOptions): Op
       if (!route) continue
       const resources = new Set((item.resources || []).map(normalizeResource).filter(Boolean))
       map.set(route, resources)
-      // 资源即路由：授权了某功能资源（如 alternatives），该资源对应的前端路由同样可达，
-      // 且该资源本身授权其页面按钮（can(route, resource)）。
-      for (const resource of resources) {
-        const resourceRoute = routeKey(resource)
-        if (!resourceRoute || resourceRoute === route) continue
-        const set = map.get(resourceRoute) ?? new Set<string>()
-        set.add(resource)
-        map.set(resourceRoute, set)
-      }
-    }
-    // 扁平资源数组：每个已授权资源即一条路由，资源本身授权其页面按钮。
-    for (const resource of rawResourceList.value) {
-      const key = normalizeResource(resource)
-      if (!key) continue
-      const resourceRoute = routeKey(key)
-      const set = map.get(resourceRoute) ?? new Set<string>()
-      set.add(key)
-      map.set(resourceRoute, set)
     }
     return map
   })
 
-  /** 扁平资源数组的全局授权资源集合。 */
+  /** 全部已授权资源集合（两种返回结构归一后），识别按路径尾部匹配。 */
   const grantedResources = computed(() => {
     const set = new Set<string>()
+    for (const item of rawPermissions.value) {
+      for (const resource of item.resources || []) {
+        const key = normalizeResource(resource)
+        if (key) set.add(key)
+      }
+    }
     for (const resource of rawResourceList.value) {
       const key = normalizeResource(resource)
       if (key) set.add(key)
@@ -157,23 +148,38 @@ export function createOpenurpPermissions(options: OpenurpPermissionsOptions): Op
     return set
   })
 
+  /** 资源路径是否命中 key：相等、以 `/key` 结尾、末段相等或以 `/末段` 结尾。 */
+  const matchesResource = (item: string, key: string): boolean => {
+    if (item === key || item.endsWith(`/${key}`)) return true
+    const lastSegment = key.split('/').pop() as string
+    return item === lastSegment || item.endsWith(`/${lastSegment}`)
+  }
+
   const canRoute = (path: string): boolean => {
     if (grantAll.value) return true
-    return byRoute.value.has(routeKey(path))
+    const key = routeKey(path)
+    if (byRoute.value.has(key)) return true
+    const routePath = key.replace(/^\/+/, '')
+    for (const item of grantedResources.value) {
+      if (item === routePath || item.endsWith(`/${routePath}`)) return true
+    }
+    return false
   }
 
   const can = (route: string, resource: string): boolean => {
     if (grantAll.value) return true
     const key = normalizeResource(resource)
     if (!key) return false
-    // 扁平资源数组：资源为全局授权，命中即视为可用（如 /exams 页面的缓考按钮依赖 exam-defers 资源）。
-    if (rawResourceList.value.length > 0 && grantedResources.value.has(key)) return true
+    // 扁平资源数组：资源为全局授权，按路径尾部识别（如 /exams 页面的缓考按钮依赖 exam-defers 资源）。
+    if (rawResourceList.value.length > 0) {
+      for (const item of grantedResources.value) {
+        if (matchesResource(item, key)) return true
+      }
+    }
     const resources = byRoute.value.get(routeKey(route))
     if (!resources) return false
     for (const item of resources) {
-      if (item === key || item.endsWith(`/${key}`)) return true
-      const lastSegment = key.split('/').pop() as string
-      if (item === lastSegment || item.endsWith(`/${lastSegment}`)) return true
+      if (matchesResource(item, key)) return true
     }
     return false
   }
