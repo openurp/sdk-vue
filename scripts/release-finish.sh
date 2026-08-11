@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# 发布收尾：回到 develop，把版本号设为下一个 -SNAPSHOT 并提交推送。
-# 用法：./scripts/release-finish.sh <已发布版本号> [patch|minor|major]   （默认 patch）
+# 发布收尾：读取当前（main 上）package.json 的已发布版本，
+# 回到 develop 把版本号设为下一个 -SNAPSHOT 并提交推送。
+# 用法：./scripts/release-finish.sh [patch|minor|major]   （默认 patch）
 #
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-RELEASED="${1:?缺少已发布版本号，如 0.0.2}"
-BUMP="${2:-patch}"
+BUMP="${1:-patch}"
 case "$BUMP" in
   patch|minor|major) ;;
   *) echo "版本参数只能是 patch|minor|major" >&2; exit 1 ;;
@@ -21,6 +21,12 @@ die() { printf '\033[1;31m[release] 错误:\033[0m %s\n' "$*" >&2; exit 1; }
 if [ -n "$(git status --porcelain)" ]; then
   die "工作区有未提交改动，请先提交或暂存"
 fi
+
+RELEASED="$(node -p "require('./package.json').version")"
+case "$RELEASED" in
+  *-SNAPSHOT) die "当前 package.json 版本 $RELEASED 仍是 -SNAPSHOT，请确认已发布后再执行收尾" ;;
+esac
+log "已发布版本: $RELEASED（来自 package.json）"
 
 log "切换到 develop"
 git checkout develop

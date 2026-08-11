@@ -72,4 +72,4 @@ git push origin "v$REL"
 
 log "发布准备完成，当前在 main 分支。后续："
 log "  1. pnpm publish（发布正式版本 v$REL）"
-log "  2. 发布完成后执行 ./scripts/release-finish.sh $REL $BUMP（回 develop 并设置下一个 -SNAPSHOT）"
+log "  2. 发布完成后执行 ./scripts/release-finish.sh $BUMP（自动读取版本并设置下一个 -SNAPSHOT）"
