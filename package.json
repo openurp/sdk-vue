@@ -4,7 +4,8 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "exports": {
     ".": {
