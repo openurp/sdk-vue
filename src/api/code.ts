@@ -12,6 +12,8 @@ export interface CodeApiOptions {
 
 const inFlightRequests = new Map<string, Promise<CodeItem[]>>()
 
+const CODE_CACHE_VERSION = 1
+
 export function codeCacheKey(projectId: string | number, code: string) {
   return `openurp.cache.dict.${code}.${projectId}`
 }
@@ -21,7 +23,8 @@ export async function listCodeItems(projectId: string | number, code: string, op
   const cacheKey = codeCacheKey(projectId, code)
   const cached = cacheEnabled ? readLocalCache<CodeItem>(cacheKey) : { entry: null, expired: true }
 
-  if (cached.entry && !cached.expired) return cached.entry.items
+  // 校验缓存 schema 版本，避免升级后消费旧版本写入的脏数据。
+  if (cached.entry?.version === CODE_CACHE_VERSION && !cached.expired) return cached.entry.items
 
   const requestKey = `${projectId}:${code}`
   const existing = inFlightRequests.get(requestKey)
@@ -32,7 +35,7 @@ export async function listCodeItems(projectId: string | number, code: string, op
       if (cacheEnabled) {
         const now = Date.now()
         writeLocalCache(cacheKey, {
-          version: 1,
+          version: CODE_CACHE_VERSION,
           projectId,
           resource: 'dict',
           code,
@@ -44,7 +47,7 @@ export async function listCodeItems(projectId: string | number, code: string, op
       return items
     })
     .catch((error) => {
-      if (cached.entry) return cached.entry.items
+      if (cached.entry?.version === CODE_CACHE_VERSION) return cached.entry.items
       throw error
     })
     .finally(() => inFlightRequests.delete(requestKey))

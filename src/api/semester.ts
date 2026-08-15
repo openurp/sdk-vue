@@ -110,13 +110,16 @@ export function semesterCacheKeyWithFilter(projectId: string | number, filter = 
   return `openurp.cache.semesters.${projectId}.${filter || 'all'}`
 }
 
+const SEMESTER_CACHE_VERSION = 1
+
 export async function listSemesters(projectId: string | number, options: SemesterApiOptions = {}) {
   const filter = options.filter ?? 'active'
   const cacheEnabled = options.cache !== false
   const cacheKey = semesterCacheKeyWithFilter(projectId, filter)
   const cached = cacheEnabled ? readLocalCache<Semester>(cacheKey) : { entry: null, expired: true }
 
-  if (cached.entry && !cached.expired) return cached.entry.items
+  // 校验缓存 schema 版本，避免升级后消费旧版本写入的脏数据。
+  if (cached.entry?.version === SEMESTER_CACHE_VERSION && !cached.expired) return cached.entry.items
 
   const requestKey = `${projectId}:${filter}`
   const existing = inFlightRequests.get(requestKey)
@@ -127,7 +130,7 @@ export async function listSemesters(projectId: string | number, options: Semeste
       if (cacheEnabled) {
         const now = Date.now()
         writeLocalCache(cacheKey, {
-          version: 1,
+          version: SEMESTER_CACHE_VERSION,
           projectId,
           resource: 'semesters',
           fetchedAt: now,
@@ -138,7 +141,7 @@ export async function listSemesters(projectId: string | number, options: Semeste
       return items
     })
     .catch((error) => {
-      if (cached.entry) return cached.entry.items
+      if (cached.entry?.version === SEMESTER_CACHE_VERSION) return cached.entry.items
       throw error
     })
     .finally(() => inFlightRequests.delete(requestKey))

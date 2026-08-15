@@ -28,13 +28,16 @@ export function teachingDateKey(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * 按 weekstate 展开上课日期。约定：weekstate 为 0/1 字符串，**最左字符对应第 1 周**，
+ * 第 i 位（0 起）为 '1' 表示第 i+1 周上课（与 EMS 下发的 reversed/padded 格式一致，
+ * 如 '111000…' = 第 1-3 周）。
+ */
 export function expandTeachingDates(startOn: string, weekstate: string): Date[] {
   if (!startOn || !weekstate) return []
   const startDate = parseTeachingDate(startOn)
   return weekstate.split('').flatMap((flag, index) => {
-    const rightIndex = weekstate.length - 1 - index
-    const weekOffset = Math.max(0, rightIndex - 1)
-    return flag === '1' ? [addTeachingDays(startDate, weekOffset * 7)] : []
+    return flag === '1' ? [addTeachingDays(startDate, index * 7)] : []
   })
 }
 

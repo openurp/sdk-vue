@@ -51,7 +51,12 @@ export class OpenurpApiClient {
       throw new OpenurpApiError(response.status, response.statusText)
     }
 
-    return response.json() as Promise<T>
+    try {
+      return (await response.json()) as T
+    } catch (error) {
+      // 空体 / 非法 JSON（如网关返回 HTML）时给出可捕获的业务错误，而非裸 SyntaxError。
+      throw new OpenurpApiError(response.status, `Invalid JSON response: ${String(error)}`)
+    }
   }
 
   /** Build a request URL (path + query + optional URP_SID for cross-origin or relative path). */

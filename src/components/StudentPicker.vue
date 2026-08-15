@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import TSelect from 'tdesign-vue-next/es/select'
 import type { SelectOption, SelectValue } from 'tdesign-vue-next/es/select/type'
 import { searchStudents } from '../api'
@@ -88,11 +88,29 @@ const emptyContent = computed(() => {
   return props.emptyText
 })
 
-function valueDisplay() {
-  const student = selectedStudent.value
+function valueDisplay(_value: SelectValue, context: { selectedOptions?: SelectOption[] }) {
+  // 优先取 tdesign 当前选中 option（含父组件预设的 modelValue 命中项），
+  // 其次回退内部 selectedStudent，保证受控 v-model 下显示与选中值一致。
+  const student =
+    (context.selectedOptions?.[0] as StudentOption | undefined)?.student ||
+    selectedStudent.value
   if (!student) return ''
   return h('span', { class: 'openurp-student-picker-value' }, student.description || [student.code, student.name].filter(Boolean).join(' '))
 }
+
+// 受控 v-model 同步：父组件预设/重置 modelValue 时，同步内部选中学生；
+// students（options）加载后再次解析，避免预设值显示空白或重置后残留旧值。
+watch(
+  [() => props.modelValue, options],
+  ([value]) => {
+    if (value === undefined || value === null || value === '') {
+      selectedStudent.value = null
+      return
+    }
+    selectedStudent.value =
+      students.value.find((item) => String(item.id) === String(value)) || null
+  },
+)
 
 function onSearch(keyword: string) {
   clearSearchTimer()

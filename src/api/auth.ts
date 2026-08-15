@@ -85,23 +85,40 @@ export function createOpenurpAuth<TUser extends OpenurpCurrentUser = OpenurpCurr
 
   const sessionService: OpenurpSessionService<TUser> = {
     setToken(token: string): void {
+      if (typeof localStorage === 'undefined') return
       localStorage.setItem(options.tokenKey || defaultTokenKey, token)
     },
 
     getToken(): string | null {
+      if (typeof localStorage === 'undefined') return null
       return localStorage.getItem(options.tokenKey || defaultTokenKey)
     },
 
     setUserInfo(userInfo: TUser): void {
+      if (typeof localStorage === 'undefined') return
       localStorage.setItem(options.userInfoKey || defaultUserInfoKey, JSON.stringify(userInfo))
     },
 
     getUserInfo(): TUser | null {
-      const userInfo = localStorage.getItem(options.userInfoKey || defaultUserInfoKey)
-      return userInfo ? JSON.parse(userInfo) as TUser : null
+      const key = options.userInfoKey || defaultUserInfoKey
+      if (typeof localStorage === 'undefined') return null
+      try {
+        const userInfo = localStorage.getItem(key)
+        return userInfo ? JSON.parse(userInfo) as TUser : null
+      } catch {
+        // 共享 key（beangle.ems.user_info）可能被其他应用/旧版本写入非法 JSON，
+        // 解析失败时清理并视为未登录，避免应用启动崩溃。
+        try {
+          localStorage.removeItem(key)
+        } catch {
+          /* ignore */
+        }
+        return null
+      }
     },
 
     clearAuth(): void {
+      if (typeof localStorage === 'undefined') return
       if (options.clearLocalStorageOnLogout) {
         localStorage.clear()
         return

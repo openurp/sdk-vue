@@ -10,10 +10,22 @@ import {
 } from '../src/utils/teachingWeek'
 
 describe('teachingWeek', () => {
-  it('expandTeachingDates 按 weekstate 从右往左展开周次日期', () => {
-    // '110'：左起第 1、2 位为 1 → 展开为第 2、1 周
+  it('expandTeachingDates 按 weekstate 从左往右展开周次日期（最左=第 1 周）', () => {
+    // '110'：第 1、2 位为 1 → 第 1、2 周
     const dates = expandTeachingDates('2026-01-05', '110')
     expect(dates.map(teachingDateKey).sort()).toEqual(['2026-01-05', '2026-01-12'])
+  })
+
+  it("expandTeachingDates 连续与非连续周均正确（'111'/'101'）", () => {
+    // '111'：第 1、2、3 周（曾经因 off-by-one 丢失最后一周）
+    const three = expandTeachingDates('2026-01-05', '111')
+    expect(three.map(teachingDateKey).sort()).toEqual(['2026-01-05', '2026-01-12', '2026-01-19'])
+    // '101'：第 1、3 周（曾经被错误映射为第 1、2 周）
+    const odd = expandTeachingDates('2026-01-05', '101')
+    expect(odd.map(teachingDateKey).sort()).toEqual(['2026-01-05', '2026-01-19'])
+    // 真实 EMS 格式（最左=第 1 周，右侧补零）：前 3 位为 1
+    const padded = expandTeachingDates('2026-01-05', '1110000000000000000000000')
+    expect(padded.map(teachingDateKey).sort()).toEqual(['2026-01-05', '2026-01-12', '2026-01-19'])
   })
 
   it('weekstate 为空或 startOn 为空时返回空数组', () => {

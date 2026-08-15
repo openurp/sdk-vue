@@ -289,19 +289,32 @@ function applyStoredSemesterId() {
   if (storedSemesterId) emit('update:modelValue', storedSemesterId)
 }
 
+/** localStorage 访问统一包 try/catch：Safari 隐私模式/禁用存储会抛 SecurityError。 */
 function readStoredSemesterId() {
   if (!props.syncDefault || !props.storageKey || typeof localStorage === 'undefined') return ''
-  return localStorage.getItem(props.storageKey) || ''
+  try {
+    return localStorage.getItem(props.storageKey) || ''
+  } catch {
+    return ''
+  }
 }
 
 function writeStoredSemester(semester: Semester) {
   if (!props.syncDefault || !props.storageKey || typeof localStorage === 'undefined') return
-  localStorage.setItem(props.storageKey, String(semester.id))
+  try {
+    localStorage.setItem(props.storageKey, String(semester.id))
+  } catch {
+    /* ignore */
+  }
 }
 
 function clearStoredSemester() {
   if (props.syncDefault && props.storageKey && typeof localStorage !== 'undefined') {
-    localStorage.removeItem(props.storageKey)
+    try {
+      localStorage.removeItem(props.storageKey)
+    } catch {
+      /* ignore */
+    }
   }
   emit('clear')
 }
@@ -488,8 +501,8 @@ function formatCompactSemester(semester: Semester) {
 }
 
 .openurp-semester-panel.is-compact .openurp-semester-options button {
-  min-height: 34px;
-  padding: 5px 7px;
+  min-height: 28px;
+  padding: 3px 0 3px 8px;
 }
 
 .openurp-semester-panel-head strong {
@@ -574,8 +587,8 @@ function formatCompactSemester(semester: Semester) {
 .openurp-semester-options button {
   display: grid;
   gap: 2px;
-  min-height: 42px;
-  padding: 7px 9px;
+  min-height: 32px;
+  padding: 3px 0 3px 8px;
   color: #374151;
   background: #fff;
   border: 1px solid #e5e7eb;

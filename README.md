@@ -6,8 +6,27 @@ This package is intended for reusable OpenURP frontend capabilities:
 
 - API clients and typed business models
 - Vue composables for shared state and querying
-- Business selector components, such as semester, department, teacher, classroom, campus, major, class, and textbook selectors
+- Business selector components: `AppShell`, `SemesterPicker`, `StudentPicker`, `CodePicker`
 - Small domain utilities and display helpers
+
+## Install & styles
+
+```bash
+npm install @openurp/sdk-vue
+```
+
+Components ship with their styles in `dist/index.css`. Consumers must import it once
+(e.g. in the app entry):
+
+```ts
+import '@openurp/sdk-vue/dist/index.css'
+```
+
+The AppShell standalone chrome styles are also exported separately:
+
+```ts
+import '@openurp/sdk-vue/styles/app-shell.css'
+```
 
 ## Layout
 
@@ -43,10 +62,10 @@ Code list cache keys use the project-sensitive form:
 openurp.cache.dict.{code}.{projectId}
 ```
 
-Semester list cache keys use:
+Semester list cache keys use (project + filter, default filter `active`):
 
 ```text
-openurp.cache.semesters.{projectId}
+openurp.cache.semesters.{projectId}.{filter}
 ```
 
 Context APIs:
@@ -69,4 +88,5 @@ openurp.cache.context.departments.{projectId}
 ```bash
 npm run typecheck
 npm run build
+npm test
 ```

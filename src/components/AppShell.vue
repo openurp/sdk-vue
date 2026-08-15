@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import TDropdown from 'tdesign-vue-next/es/dropdown'
 import type { AppShellMenuItem, AppShellProfile } from './app-shell'
 import AppShellFullscreenToggle from './AppShellFullscreenToggle.vue'
 import AppShellLocaleToggle from './AppShellLocaleToggle.vue'
@@ -144,6 +145,7 @@ const props = withDefaults(
     brandMark: '',
     logoUrl: '',
     subtitle: '',
+    menus: () => [],
     activePath: undefined,
     userName: '',
     portalHref: '',
@@ -225,7 +227,8 @@ const userMenuOptions = computed(() => [
   {
     content: props.logoutLabel,
     value: 'logout',
-    onClick: () => emit('logout'),
+    // 不要在这里设置 onClick：tdesign 点击 option 时会同时触发 option.onClick
+    // 与 dropdown 的 @click（onUserCommand），会造成 logout 双触发。
   },
 ])
 
