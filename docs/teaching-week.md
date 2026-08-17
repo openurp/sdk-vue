@@ -77,6 +77,23 @@ semester.firstWeekday（Mon=周一开始，Sun=周日开始）展开自然周
 - 3/2、3/3 早于开学日，但与 beginOn 同属一个自然周 → 仍为第 1 周
 - 3/4~3/8 → 第 1 周；3/9 起 → 第 2 周
 
+## 真实数据核对（回归基准）
+
+为避免位序/周次逻辑改动引入"差一周 / 待定"类回归，仓库内置了**真实 API 数据核对**
+（`tests/fixtures/teachingWeek.ts` + `tests/teachingWeek.spec.ts` 的
+"真实数据核对"用例）：
+
+- **数据来源**：2025-2026-2 学期（id=20252，beginOn=2026-03-02，firstWeekday=Mon）
+  学生 course-takers 接口的 20 条真实课程活动；
+- **核对内容**：每条 fixture 断言 `expandTeachingDates(startOn, weekstate)` 展开后
+  相对 `semester.beginOn` 算出的教学周次与期望一致；同时校验 startOn 的星期几与
+  fixture 声明相符（防 fixture 抄错）；
+- **覆盖形态**：15 个 1（1-15 周）、8 个 1（5-12 周）、4 个 1（5-8 周）、
+  换教室拆两条（主段缺某周 + 单独补课周，如 4733 财务管理的 13 周、
+  4735 中级财务会计的 5 周）；
+- **如何更新**：新增课程活动时，在 `tests/fixtures/teachingWeek.ts` 追加一条
+  （crn/startOn/weekday/units/weekstate/期望 weeks），跑 `pnpm test` 即核对。
+
 ## 相关接口
 
 - `expandTeachingDates(startOn, weekstate)` → 上课日期数组（已按反转位序展开）

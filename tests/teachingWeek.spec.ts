@@ -8,6 +8,10 @@ import {
   parseTeachingDate,
   teachingDateKey,
 } from '../src/utils/teachingWeek'
+import { teachingWeekFixtures, teachingWeekSemester } from './fixtures/teachingWeek'
+
+/** 星期几数字 → 中文（校验 fixture 的 weekday 与 startOn 是否一致） */
+const weekdayName = (date: Date) => ['日', '一', '二', '三', '四', '五', '六'][date.getDay()]
 
 describe('teachingWeek', () => {
   it('expandTeachingDates 按 beangle 位序展开：反转后第 i 位=week i，日期=startOn+(i-1)*7', () => {
@@ -111,5 +115,27 @@ describe('teachingWeek', () => {
 
   it('addTeachingDays 与 teachingDateKey', () => {
     expect(teachingDateKey(addTeachingDays(parseTeachingDate('2026-01-05'), 7))).toBe('2026-01-12')
+  })
+
+  describe('真实数据核对（2025-2026-2 学期 course-takers fixtures）', () => {
+    it('fixture 数量与样例存在', () => {
+      expect(teachingWeekFixtures.length).toBeGreaterThanOrEqual(15)
+      expect(teachingWeekSemester.beginOn).toBe('2026-03-02')
+      expect(teachingWeekSemester.firstWeekday).toBe('Mon')
+    })
+
+    it.each(teachingWeekFixtures)(
+      '$crn $course $weekday$units（weekstate=$weekstate）→ $weeks',
+      ({ startOn, weekday, weekstate, weeks }) => {
+        // 1) startOn 的星期几与 fixture 声明一致（防 fixture 抄错）
+        expect(weekdayName(parseTeachingDate(startOn))).toBe(weekday)
+        // 2) weekstate 展开的教学周次与期望一致（核心核对）
+        const dates = expandTeachingDates(startOn, weekstate)
+        const weekNumbers = normalizeTeachingWeeks(
+          dates.map((d) => getTeachingWeekNumber(d, teachingWeekSemester)),
+        )
+        expect(formatTeachingWeeks(weekNumbers)).toBe(weeks)
+      },
+    )
   })
 })
