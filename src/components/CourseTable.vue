@@ -274,6 +274,7 @@ function onCourseClick(course: CourseTableCourse, day: number) {
 /* 主题变量（消费方可覆盖） */
 .course-table {
   --ct-row-height: 50px;
+  --ct-day-row-height: 56px;
   --ct-head-height: 26px;
   --ct-day-col-width: 116px;
   --ct-section-col-width: 46px;
@@ -341,6 +342,7 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   color: #98a2b3;
 }
 
+/* 转置布局（行=节次）：每行固定行高 */
 .course-table--transposed tbody tr {
   height: var(--ct-row-height);
 }
@@ -350,11 +352,26 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   padding: 0;
   vertical-align: top;
 }
+/* 经典布局（行=天）：行高由当天课程内容撑起（一天多节课并排，固定行高放不下）。
+   最小行高用独立的 --ct-day-row-height（默认比节次行高更宽裕），可被消费方覆盖；
+   内容超出时自动增高。 */
 .course-table--classic td {
   min-width: 0;
-  height: var(--ct-row-height);
+  height: auto;
+  min-height: var(--ct-day-row-height);
   padding: 0;
   vertical-align: top;
+}
+/* 首列（行/列标签）收窄：经典=星期（周一…），转置=节次（1节…）。
+   注意转置布局的天列/经典的表头节次列仍是数据列，保持 --ct-day-col-width /
+   --ct-section-col-width 不变。 */
+.course-table--classic .course-table__day-col {
+  width: var(--ct-day-label-width, 52px);
+  min-width: var(--ct-day-label-width, 52px);
+}
+.course-table--transposed .course-table__section-col {
+  width: var(--ct-section-label-width, 34px);
+  min-width: var(--ct-section-label-width, 34px);
 }
 
 /* 合并单元格（跨节）承担整体着色：背景 + 色条。
@@ -380,6 +397,10 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   border-radius: 0;
   color: var(--ct-text);
   cursor: pointer;
+}
+/* 经典布局（行=天）内块跟随天行高 */
+.course-table--classic .course-table__cell {
+  min-height: var(--ct-day-row-height);
 }
 /* 单节单元格：块自带背景 + 色条（方向同样按 data-bar） */
 .course-table__cell.tone-0 { background: var(--ct-tone-0-bg); }

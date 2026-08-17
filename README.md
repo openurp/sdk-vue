@@ -38,7 +38,23 @@ src/
   composables/
   types/
   utils/
+  wide.ts        # 宽屏/桌面端专用组件入口
 ```
+
+## Platform separation（平台隔离）
+
+本包被移动端与 PC 端共用。**只适合宽屏的组件（大表格、多列布局）一律走独立入口
+`@openurp/sdk-vue/wide`，不进主入口**，从 API 层面避免移动端误用：
+
+```ts
+// PC/宽屏端：显式从 wide 入口导入
+import { CourseTable } from '@openurp/sdk-vue/wide'
+// 移动端：主入口里没有这些组件，import 不到即不会误用
+import { SemesterPicker } from '@openurp/sdk-vue'
+```
+
+规则：新增只适合宽屏的组件时，放在 `src/wide.ts` 导出（对应子路径
+`@openurp/sdk-vue/wide`），**不要**加入主入口 `src/index.ts` / `src/components/index.ts`。
 
 ## Docs
 

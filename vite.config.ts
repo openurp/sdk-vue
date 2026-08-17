@@ -13,9 +13,13 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      entry: {
+        index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        wide: fileURLToPath(new URL('./src/wide.ts', import.meta.url)),
+      },
       formats: ['es'],
-      fileName: 'index',
+      fileName: (format, entryName) => `${entryName}.js`,
+      cssFileName: 'index',
     },
     rollupOptions: {
       external: [
