@@ -1,0 +1,423 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { CourseTableCourse, CourseTableDay } from './courseTable'
+
+const props = withDefaults(
+  defineProps<{
+    courses: CourseTableCourse[]
+    /** true=行节次、列天（现代布局）；false=行天、列节次（经典布局） */
+    transposed?: boolean
+    days?: CourseTableDay[]
+    /** 最大节次数；缺省按课程数据推导 */
+    maxSection?: number
+    /** 颜色索引（0..4），决定色条/背景色 */
+    tone?: (course: CourseTableCourse) => number
+    dayLabel?: (day: CourseTableDay) => string
+    clickable?: boolean
+  }>(),
+  {
+    transposed: false,
+    days: () => [
+      { value: 1, label: '周一' },
+      { value: 2, label: '周二' },
+      { value: 3, label: '周三' },
+      { value: 4, label: '周四' },
+      { value: 5, label: '周五' },
+      { value: 6, label: '周六' },
+      { value: 7, label: '周日' },
+    ],
+    maxSection: 0,
+    tone: () => 0,
+    dayLabel: (day: CourseTableDay) => day.label,
+    clickable: true,
+  },
+)
+
+const emit = defineEmits<{
+  'course-click': [course: CourseTableCourse, info: { day: number; startSection: number }]
+}>()
+
+const visibleDays = computed(() => {
+  if (props.days.length > 0) return props.days
+  return [
+    { value: 1, label: '周一' },
+    { value: 2, label: '周二' },
+    { value: 3, label: '周三' },
+    { value: 4, label: '周四' },
+    { value: 5, label: '周五' },
+    { value: 6, label: '周六' },
+    { value: 7, label: '周日' },
+  ]
+})
+
+/** 节次列表：1..max（含中间空节次，保证网格连续） */
+const sections = computed(() => {
+  const max = Math.max(
+    props.maxSection,
+    ...props.courses.map((c) => c.endSection),
+    0,
+  )
+  return Array.from({ length: max }, (_, i) => i + 1)
+})
+
+interface DayPlacement {
+  placed: (CourseTableCourse | null)[]
+  spans: Map<number, number>
+  occupied: boolean[]
+}
+
+/** 每天按节次放置课程：冲突跳过，跨节记录 span（合并方向由布局决定）。 */
+const dayPlacements = computed<Map<number, DayPlacement>>(() => {
+  const result = new Map<number, DayPlacement>()
+  visibleDays.value.forEach((day) => {
+    const max = sections.value.length
+    const placed = new Array<CourseTableCourse | null>(max).fill(null)
+    const spans = new Map<number, number>()
+    const occupied = new Array<boolean>(max).fill(false)
+    props.courses
+      .filter((c) => c.dayOfWeek === day.value)
+      .forEach((course) => {
+        const startIdx = course.startSection - 1
+        const endIdx = course.endSection - 1
+        if (startIdx < 0 || endIdx >= max || startIdx > endIdx) return
+        if (occupied.slice(startIdx, endIdx + 1).some(Boolean)) return
+        occupied.fill(true, startIdx, endIdx + 1)
+        placed[startIdx] = course
+        spans.set(startIdx, endIdx - startIdx + 1)
+      })
+    result.set(day.value, { placed, spans, occupied })
+  })
+  return result
+})
+
+/** 第二行文本：教师 | 周次、地点（多个安排用「；」连接）。 */
+function courseMetaText(course: CourseTableCourse): string {
+  const schedule = (course.arrangements || [])
+    .map((a) => {
+      const weeks = a.weeks || '周次待定'
+      const location = a.location && a.location !== '未安排教室' ? a.location : ''
+      return location ? `${weeks}、${location}` : weeks
+    })
+    .join('；')
+  if (!course.teacher && !schedule) return ''
+  return [course.teacher, schedule].filter(Boolean).join(' | ')
+}
+
+type GridCell =
+  | { key: string; course: CourseTableCourse; day: number; span: number; tone: number }
+  | { key: string; course: null; span: 1 }
+
+/** 转置布局（行=节次、列=天）：按节次行产出各天单元格，跨节用 rowspan。 */
+const transposedCells = (sectionIndex: number): GridCell[] => {
+  const cells: GridCell[] = []
+  visibleDays.value.forEach((day) => {
+    const placement = dayPlacements.value.get(day.value)
+    if (!placement) {
+      cells.push({ key: `${day.value}-e`, course: null, span: 1 })
+      return
+    }
+    const span = placement.spans.get(sectionIndex)
+    if (span) {
+      const course = placement.placed[sectionIndex]
+      cells.push(
+        course
+          ? { key: `${day.value}-${String(course.id)}`, course, day: day.value, span, tone: props.tone(course) }
+          : { key: `${day.value}-e`, course: null, span: 1 },
+      )
+    } else if (placement.occupied[sectionIndex]) {
+      // 被上方 rowspan 覆盖，跳过
+    } else {
+      cells.push({ key: `${day.value}-e`, course: null, span: 1 })
+    }
+  })
+  return cells
+}
+
+/** 经典布局（行=天、列=节次）：按天产出各节次单元格，跨节用 colspan。 */
+const classicCells = (day: number): GridCell[] => {
+  const cells: GridCell[] = []
+  const placement = dayPlacements.value.get(day)
+  const max = sections.value.length
+  if (!placement) {
+    for (let i = 0; i < max; i++) cells.push({ key: `${day}-e${i}`, course: null, span: 1 })
+    return cells
+  }
+  for (let i = 0; i < max; i++) {
+    const span = placement.spans.get(i)
+    if (span) {
+      const course = placement.placed[i]
+      cells.push(
+        course
+          ? { key: `${day}-${String(course.id)}`, course, day, span, tone: props.tone(course) }
+          : { key: `${day}-e${i}`, course: null, span: 1 },
+      )
+    } else if (placement.occupied[i]) {
+      // 被左侧 colspan 覆盖，跳过
+    } else {
+      cells.push({ key: `${day}-e${i}`, course: null, span: 1 })
+    }
+  }
+  return cells
+}
+
+function onCourseClick(course: CourseTableCourse, day: number) {
+  if (!props.clickable) return
+  emit('course-click', course, { day, startSection: course.startSection })
+}
+</script>
+
+<template>
+  <div
+    class="course-table"
+    :class="[transposed ? 'course-table--transposed' : 'course-table--classic']"
+  >
+    <table class="course-table__grid">
+      <thead>
+        <tr>
+          <template v-if="transposed">
+            <th class="course-table__corner course-table__section-col">节次</th>
+            <th
+              v-for="day in visibleDays"
+              :key="day.value"
+              class="course-table__day-col"
+            >{{ dayLabel(day) }}</th>
+          </template>
+          <template v-else>
+            <th class="course-table__corner course-table__day-col">星期</th>
+            <th
+              v-for="section in sections"
+              :key="section"
+              class="course-table__section-col"
+            >第{{ section }}节</th>
+          </template>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-if="transposed">
+          <tr v-for="(section, sectionIndex) in sections" :key="section">
+            <th class="course-table__section-col">
+              <strong>{{ section }}</strong><span>节</span>
+            </th>
+            <td
+              v-for="cell in transposedCells(sectionIndex)"
+              :key="cell.key"
+              :rowspan="cell.span"
+              :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
+            >
+              <div
+                v-if="cell.course"
+                class="course-table__cell"
+                :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                role="button"
+                :tabindex="clickable ? 0 : -1"
+                @click="onCourseClick(cell.course, cell.day)"
+                @keydown.enter.prevent="clickable && onCourseClick(cell.course, cell.day)"
+              >
+                <slot
+                  name="course"
+                  :course="cell.course"
+                  :day="cell.day"
+                  :start-section="cell.course.startSection"
+                  :end-section="cell.course.endSection"
+                  :tone="cell.tone"
+                >
+                  <span class="course-table__name">{{ cell.course.name }}<template v-if="cell.course.crn">（{{ cell.course.crn }}）</template></span>
+                  <span v-if="courseMetaText(cell.course)" class="course-table__meta">{{ courseMetaText(cell.course) }}</span>
+                </slot>
+              </div>
+            </td>
+          </tr>
+        </template>
+        <template v-else>
+          <tr v-for="day in visibleDays" :key="day.value">
+            <th class="course-table__day-col">{{ dayLabel(day) }}</th>
+            <td
+              v-for="cell in classicCells(day.value)"
+              :key="cell.key"
+              :colspan="cell.span"
+              :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
+            >
+              <div
+                v-if="cell.course"
+                class="course-table__cell"
+                :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                role="button"
+                :tabindex="clickable ? 0 : -1"
+                @click="onCourseClick(cell.course, cell.day)"
+                @keydown.enter.prevent="clickable && onCourseClick(cell.course, cell.day)"
+              >
+                <slot
+                  name="course"
+                  :course="cell.course"
+                  :day="cell.day"
+                  :start-section="cell.course.startSection"
+                  :end-section="cell.course.endSection"
+                  :tone="cell.tone"
+                >
+                  <span class="course-table__name">{{ cell.course.name }}<template v-if="cell.course.crn">（{{ cell.course.crn }}）</template></span>
+                  <span v-if="courseMetaText(cell.course)" class="course-table__meta">{{ courseMetaText(cell.course) }}</span>
+                </slot>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<style scoped>
+/* 主题变量（消费方可覆盖） */
+.course-table {
+  --ct-row-height: 50px;
+  --ct-head-height: 26px;
+  --ct-day-col-width: 116px;
+  --ct-section-col-width: 46px;
+  --ct-border: #e5eaf0;
+  --ct-head-bg: #f6f8fa;
+  --ct-side-bg: #f8fafb;
+  --ct-text: #26384d;
+  --ct-meta: #50657b;
+  --ct-tone-0: #4386c5;
+  --ct-tone-0-bg: #edf5fc;
+  --ct-tone-1: #6d72c9;
+  --ct-tone-1-bg: #f0f0fb;
+  --ct-tone-2: #3e9a79;
+  --ct-tone-2-bg: #edf8f4;
+  --ct-tone-3: #d68a38;
+  --ct-tone-3-bg: #fbf4e9;
+  --ct-tone-4: #b9657b;
+  --ct-tone-4-bg: #faeff2;
+}
+
+.course-table__grid {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.course-table__grid th,
+.course-table__grid td {
+  border-right: 1px solid var(--ct-border);
+  border-bottom: 1px solid var(--ct-border);
+}
+
+.course-table__grid thead th {
+  height: var(--ct-head-height);
+  min-width: 60px;
+  background: var(--ct-head-bg);
+  color: #4f5d70;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.course-table__day-col {
+  width: var(--ct-day-col-width);
+  min-width: var(--ct-day-col-width);
+  text-align: center;
+  background: var(--ct-side-bg);
+  color: #4f5d70;
+}
+
+.course-table__section-col {
+  width: var(--ct-section-col-width);
+  min-width: var(--ct-section-col-width);
+  text-align: center;
+  background: var(--ct-side-bg);
+  white-space: nowrap;
+}
+.course-table__section-col strong {
+  display: inline;
+  font-size: 13px;
+  color: #354154;
+}
+.course-table__section-col span {
+  font-size: 11px;
+  color: #98a2b3;
+}
+
+.course-table--transposed tbody tr {
+  height: var(--ct-row-height);
+}
+.course-table--transposed td {
+  min-width: 0;
+  height: var(--ct-row-height);
+  padding: 0;
+  vertical-align: top;
+}
+.course-table--classic td {
+  min-width: 0;
+  height: var(--ct-row-height);
+  padding: 0;
+  vertical-align: top;
+}
+
+/* 合并单元格（跨节）承担整体着色：背景 + 色条（转置=顶部、经典=左侧），
+   与内部块高度无关，跨浏览器稳定 */
+.course-table--transposed td.tone-0 { border-top: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
+.course-table--transposed td.tone-1 { border-top: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
+.course-table--transposed td.tone-2 { border-top: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
+.course-table--transposed td.tone-3 { border-top: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
+.course-table--transposed td.tone-4 { border-top: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
+.course-table--classic td.tone-0 { border-left: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
+.course-table--classic td.tone-1 { border-left: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
+.course-table--classic td.tone-2 { border-left: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
+.course-table--classic td.tone-3 { border-left: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
+.course-table--classic td.tone-4 { border-left: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
+
+.course-table__cell {
+  display: block;
+  width: 100%;
+  min-height: var(--ct-row-height);
+  padding: 2px 4px;
+  box-sizing: border-box;
+  border-radius: 0;
+  color: var(--ct-text);
+  cursor: pointer;
+}
+/* 单节单元格：块自带背景 + 色条 */
+.course-table__cell.tone-0 { background: var(--ct-tone-0-bg); }
+.course-table__cell.tone-1 { background: var(--ct-tone-1-bg); }
+.course-table__cell.tone-2 { background: var(--ct-tone-2-bg); }
+.course-table__cell.tone-3 { background: var(--ct-tone-3-bg); }
+.course-table__cell.tone-4 { background: var(--ct-tone-4-bg); }
+.course-table--transposed .course-table__cell.tone-0 { border-top: 3px solid var(--ct-tone-0); }
+.course-table--transposed .course-table__cell.tone-1 { border-top: 3px solid var(--ct-tone-1); }
+.course-table--transposed .course-table__cell.tone-2 { border-top: 3px solid var(--ct-tone-2); }
+.course-table--transposed .course-table__cell.tone-3 { border-top: 3px solid var(--ct-tone-3); }
+.course-table--transposed .course-table__cell.tone-4 { border-top: 3px solid var(--ct-tone-4); }
+.course-table--classic .course-table__cell.tone-0 { border-left: 3px solid var(--ct-tone-0); }
+.course-table--classic .course-table__cell.tone-1 { border-left: 3px solid var(--ct-tone-1); }
+.course-table--classic .course-table__cell.tone-2 { border-left: 3px solid var(--ct-tone-2); }
+.course-table--classic .course-table__cell.tone-3 { border-left: 3px solid var(--ct-tone-3); }
+.course-table--classic .course-table__cell.tone-4 { border-left: 3px solid var(--ct-tone-4); }
+
+/* 合并单元格内块透明（着色已由 td 承担），尽量撑满 */
+.course-table--transposed td[class*="tone-"] > .course-table__cell,
+.course-table--classic td[class*="tone-"] > .course-table__cell {
+  background: transparent;
+  border: 0;
+  height: 100%;
+}
+
+.course-table__name {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 1px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.course-table__meta {
+  display: block;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--ct-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

@@ -4,5 +4,7 @@ export { default as AppShellFullscreenToggle } from './AppShellFullscreenToggle.
 export { default as AppShellLocaleToggle } from './AppShellLocaleToggle.vue'
 export { default as AppShellThemeToggle } from './AppShellThemeToggle.vue'
 export { default as CodePicker } from './CodePicker.vue'
+export { default as CourseTable } from './CourseTable.vue'
+export type { CourseTableCourse, CourseTableDay } from './courseTable'
 export { default as SemesterPicker } from './SemesterPicker.vue'
 export { default as StudentPicker } from './StudentPicker.vue'
