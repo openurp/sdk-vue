@@ -29,18 +29,61 @@ export function teachingDateKey(date: Date): string {
 }
 
 /**
- * 按 weekstate 展开上课日期。约定：weekstate 为 0/1 字符串，**最左字符对应第 1 周**，
- * 第 i 位（0 起）为 '1' 表示第 i+1 周上课（与 EMS 下发的 reversed/padded 格式一致，
- * 如 '111000…' = 第 1-3 周）。
+ * 按 weekstate 展开上课日期。
+ *
+ * weekstate 是 beangle 的二进制位图（存储为 long，如 2088960 = 0b111111110000000000000），
+ * 下发形态为 0/1 字符串。**位序约定（与 beangle `WeekState.weeks()` 一致）**：
+ * 字符串最右字符 = week 0，最左字符 = week (len-1)；week 从 0 开始计数。
+ * 第 i 个上课日期 = `startOn.plusWeeks(week - 1)`，即：
+ * - week 0 → startOn 前一周（startOn - 7 天）
+ * - week 1 → startOn
+ * - week k → startOn + (k-1)*7 天
+ *
+ * 实现上：先反转字符串（最右变最左），反转后第 i 位为 '1' 表示 week=i，
+ * 日期 = startOn + (i-1)*7 天。
+ *
+ * 兼容两种下发形态：
+ * - 0/1 字符串（真实 API 形态，如 '111111110000000000000'）
+ * - 十进制数（beangle long 存储值，如 2088960，会先转回二进制字符串）
+ *
+ * 教学周次不在此函数计算：用返回值配合 `getTeachingWeekNumber(date, semester)`
+ * 相对 `semester.beginOn`（含 `semester.calendar.firstWeekday`）换算。
  */
-export function expandTeachingDates(startOn: string, weekstate: string): Date[] {
-  if (!startOn || !weekstate) return []
+export function expandTeachingDates(startOn: string, weekstate: string | number): Date[] {
+  if (!startOn || weekstate === '' || weekstate == null) return []
+  const bits = normalizeWeekstate(weekstate)
+  if (!bits) return []
   const startDate = parseTeachingDate(startOn)
-  return weekstate.split('').flatMap((flag, index) => {
-    return flag === '1' ? [addTeachingDays(startDate, index * 7)] : []
-  })
+  // 反转：反转后第 i 位 = week i；日期 = startOn + (i-1)*7
+  return bits
+    .split('')
+    .reverse()
+    .flatMap((flag, index) => {
+      return flag === '1' ? [addTeachingDays(startDate, (index - 1) * 7)] : []
+    })
 }
 
+/**
+ * 归一化 weekstate 为 0/1 字符串；无法识别时返回 ''（不展开任何日期）。
+ * 兼容两种形态：0/1 字符串（真实 API）与十进制数（beangle long 存储值，先转回二进制）。
+ * 位序约定详见 `docs/teaching-week.md`（反转后第 0 位 = 相对 startOn 的第 0 周）。
+ */
+export function normalizeWeekstate(weekstate: string | number): string {
+  const value = typeof weekstate === 'number' ? String(weekstate) : weekstate
+  if (/^[01]+$/.test(value)) return value
+  const num = Number(value)
+  if (Number.isSafeInteger(num) && num > 0) return num.toString(2)
+  return ''
+}
+
+/**
+ * 计算 date 对应的教学周次。
+ *
+ * 以 `semester.firstWeekday`（Mon=周一开始，Sun=周日开始）为边界把时间轴展开为
+ * 连续的自然周，**`semester.beginOn` 所在的那个自然周即第 1 周**（教学周不要求
+ * 满 7 天：如 firstWeekday=Mon 但 beginOn 是周三，该周仍是第 1 周，其内早于
+ * beginOn 的周一、周二也属于第 1 周，只是此类上课日期很少见）。
+ */
 export function getTeachingWeekNumber(date: Date, semester: TeachingSemesterRange): number {
   const firstWeekday = semester.firstWeekday || semester.calendar?.firstWeekday || 'Mon'
   const targetDay = weekdayIndexes[firstWeekday]

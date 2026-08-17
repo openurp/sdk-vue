@@ -40,6 +40,10 @@ src/
   utils/
 ```
 
+## Docs
+
+- [`docs/teaching-week.md`](docs/teaching-week.md) — weekstate 位序约定与教学周次换算（反转后第 0 位 = 相对 startOn 的第 0 周）
+
 ## Code Picker
 
 ```vue

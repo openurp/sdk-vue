@@ -202,12 +202,14 @@ function onCourseClick(course: CourseTableCourse, day: number) {
               v-for="cell in transposedCells(sectionIndex)"
               :key="cell.key"
               :rowspan="cell.span"
+              data-bar="top"
               :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
             >
               <div
                 v-if="cell.course"
                 class="course-table__cell"
                 :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                :data-bar="cell.span === 1 ? 'top' : undefined"
                 role="button"
                 :tabindex="clickable ? 0 : -1"
                 @click="onCourseClick(cell.course, cell.day)"
@@ -235,12 +237,14 @@ function onCourseClick(course: CourseTableCourse, day: number) {
               v-for="cell in classicCells(day.value)"
               :key="cell.key"
               :colspan="cell.span"
+              data-bar="left"
               :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
             >
               <div
                 v-if="cell.course"
                 class="course-table__cell"
                 :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                :data-bar="cell.span === 1 ? 'left' : undefined"
                 role="button"
                 :tabindex="clickable ? 0 : -1"
                 @click="onCourseClick(cell.course, cell.day)"
@@ -353,18 +357,19 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   vertical-align: top;
 }
 
-/* 合并单元格（跨节）承担整体着色：背景 + 色条（转置=顶部、经典=左侧），
-   与内部块高度无关，跨浏览器稳定 */
-.course-table--transposed td.tone-0 { border-top: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
-.course-table--transposed td.tone-1 { border-top: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
-.course-table--transposed td.tone-2 { border-top: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
-.course-table--transposed td.tone-3 { border-top: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
-.course-table--transposed td.tone-4 { border-top: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
-.course-table--classic td.tone-0 { border-left: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
-.course-table--classic td.tone-1 { border-left: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
-.course-table--classic td.tone-2 { border-left: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
-.course-table--classic td.tone-3 { border-left: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
-.course-table--classic td.tone-4 { border-left: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
+/* 合并单元格（跨节）承担整体着色：背景 + 色条。
+   色条方向由布局决定并通过 data-bar 显式声明：转置(天为列)=顶部，经典(天为行)=左侧。
+   着色在 td 级，与内部块高度无关，跨浏览器稳定。 */
+.course-table td[data-bar="top"].tone-0 { border-top: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
+.course-table td[data-bar="top"].tone-1 { border-top: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
+.course-table td[data-bar="top"].tone-2 { border-top: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
+.course-table td[data-bar="top"].tone-3 { border-top: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
+.course-table td[data-bar="top"].tone-4 { border-top: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
+.course-table td[data-bar="left"].tone-0 { border-left: 3px solid var(--ct-tone-0); background: var(--ct-tone-0-bg); }
+.course-table td[data-bar="left"].tone-1 { border-left: 3px solid var(--ct-tone-1); background: var(--ct-tone-1-bg); }
+.course-table td[data-bar="left"].tone-2 { border-left: 3px solid var(--ct-tone-2); background: var(--ct-tone-2-bg); }
+.course-table td[data-bar="left"].tone-3 { border-left: 3px solid var(--ct-tone-3); background: var(--ct-tone-3-bg); }
+.course-table td[data-bar="left"].tone-4 { border-left: 3px solid var(--ct-tone-4); background: var(--ct-tone-4-bg); }
 
 .course-table__cell {
   display: block;
@@ -376,26 +381,25 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   color: var(--ct-text);
   cursor: pointer;
 }
-/* 单节单元格：块自带背景 + 色条 */
+/* 单节单元格：块自带背景 + 色条（方向同样按 data-bar） */
 .course-table__cell.tone-0 { background: var(--ct-tone-0-bg); }
 .course-table__cell.tone-1 { background: var(--ct-tone-1-bg); }
 .course-table__cell.tone-2 { background: var(--ct-tone-2-bg); }
 .course-table__cell.tone-3 { background: var(--ct-tone-3-bg); }
 .course-table__cell.tone-4 { background: var(--ct-tone-4-bg); }
-.course-table--transposed .course-table__cell.tone-0 { border-top: 3px solid var(--ct-tone-0); }
-.course-table--transposed .course-table__cell.tone-1 { border-top: 3px solid var(--ct-tone-1); }
-.course-table--transposed .course-table__cell.tone-2 { border-top: 3px solid var(--ct-tone-2); }
-.course-table--transposed .course-table__cell.tone-3 { border-top: 3px solid var(--ct-tone-3); }
-.course-table--transposed .course-table__cell.tone-4 { border-top: 3px solid var(--ct-tone-4); }
-.course-table--classic .course-table__cell.tone-0 { border-left: 3px solid var(--ct-tone-0); }
-.course-table--classic .course-table__cell.tone-1 { border-left: 3px solid var(--ct-tone-1); }
-.course-table--classic .course-table__cell.tone-2 { border-left: 3px solid var(--ct-tone-2); }
-.course-table--classic .course-table__cell.tone-3 { border-left: 3px solid var(--ct-tone-3); }
-.course-table--classic .course-table__cell.tone-4 { border-left: 3px solid var(--ct-tone-4); }
+.course-table__cell[data-bar="top"].tone-0 { border-top: 3px solid var(--ct-tone-0); }
+.course-table__cell[data-bar="top"].tone-1 { border-top: 3px solid var(--ct-tone-1); }
+.course-table__cell[data-bar="top"].tone-2 { border-top: 3px solid var(--ct-tone-2); }
+.course-table__cell[data-bar="top"].tone-3 { border-top: 3px solid var(--ct-tone-3); }
+.course-table__cell[data-bar="top"].tone-4 { border-top: 3px solid var(--ct-tone-4); }
+.course-table__cell[data-bar="left"].tone-0 { border-left: 3px solid var(--ct-tone-0); }
+.course-table__cell[data-bar="left"].tone-1 { border-left: 3px solid var(--ct-tone-1); }
+.course-table__cell[data-bar="left"].tone-2 { border-left: 3px solid var(--ct-tone-2); }
+.course-table__cell[data-bar="left"].tone-3 { border-left: 3px solid var(--ct-tone-3); }
+.course-table__cell[data-bar="left"].tone-4 { border-left: 3px solid var(--ct-tone-4); }
 
 /* 合并单元格内块透明（着色已由 td 承担），尽量撑满 */
-.course-table--transposed td[class*="tone-"] > .course-table__cell,
-.course-table--classic td[class*="tone-"] > .course-table__cell {
+.course-table td[data-bar][class*="tone-"] > .course-table__cell {
   background: transparent;
   border: 0;
   height: 100%;
