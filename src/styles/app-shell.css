@@ -1,6 +1,11 @@
 /**
  * Thin SPA chrome approximating EMS portal index (AdminLTE-like):
  * full-height left sidebar (brand on top) + right column (dark navbar + content).
+ *
+ * 过渡期副本：AppShell 样式的正式出处是 @beangle/ems-app 的
+ * src/styles/app-shell.css（随其 dist/index.css 发布）。本文件仅为兼容既有
+ * 子路径导入 '@openurp/sdk-vue/styles/app-shell.css' 而保留，
+ * 消费端迁移到 @beangle/ems-app 后可删除。
  */
 .bui-app-shell {
   --appshell-sidebar-width: 156px;

@@ -1,6 +1,6 @@
 import { defaultCacheTtl, readLocalCache, writeLocalCache } from '../cache'
 import type { CodeItem } from '../types'
-import { OpenurpApiClient } from './request'
+import { EmsApiClient } from '@beangle/ems-app'
 
 export interface CodeApiOptions {
   apiBaseUrl?: string
@@ -57,7 +57,7 @@ export async function listCodeItems(projectId: string | number, code: string, op
 }
 
 async function fetchCodeItems(projectId: string | number, code: string, options: CodeApiOptions) {
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,

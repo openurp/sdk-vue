@@ -1,5 +1,5 @@
 import type { Student } from '../types'
-import { OpenurpApiClient } from './request'
+import { EmsApiClient } from '@beangle/ems-app'
 
 export interface StudentApiOptions {
   apiBaseUrl?: string
@@ -11,7 +11,7 @@ export async function searchStudents(projectId: string | number, query: string, 
   const keyword = query.trim()
   if (!keyword) return []
 
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,

@@ -24,6 +24,11 @@ DRY_RUN_CMD="${DRY_RUN_CMD:-pnpm publish --dry-run --no-git-checks}"
 log() { printf '\033[1;36m[release]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[release] 错误:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# 本地联调用的 link:/file: 依赖不能发布，换成正式版本号再走发布流程
+if node -e "const d=require('./package.json').dependencies||{};process.exit(Object.values(d).some(v=>/^(link|file):/.test(String(v)))?0:1)"; then
+  die "package.json 的 dependencies 仍有 link:/file: 本地路径，请改成正式版本号（如 ^0.0.1）后再发布"
+fi
+
 if [ -n "$(git status --porcelain)" ]; then
   die "工作区有未提交改动，请先提交或暂存"
 fi

@@ -1,6 +1,6 @@
 import { defaultCacheTtl, readLocalCache, writeLocalCache } from '../cache'
 import type { OpenurpDepartment, OpenurpProject } from '../types'
-import { OpenurpApiClient } from './request'
+import { EmsApiClient } from '@beangle/ems-app'
 
 export interface ContextApiOptions {
   apiBaseUrl?: string
@@ -123,7 +123,7 @@ async function listCachedContextResource<T>(params: {
 }
 
 function fetchContextResource(path: string, options: ContextApiOptions) {
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,

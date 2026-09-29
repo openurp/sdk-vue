@@ -1,5 +1,5 @@
 import { defaultCacheTtl, readLocalCache, writeLocalCache } from '../cache'
-import { OpenurpApiClient, OpenurpApiError } from './request'
+import { EmsApiClient, EmsApiError } from '@beangle/ems-app'
 import type { Semester } from '../types'
 
 export interface SemesterApiOptions {
@@ -57,7 +57,7 @@ export function getStudentSemestersUrl(
     return `${base}${sep}student.id=${encodeURIComponent(id)}`
   }
 
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,
@@ -83,12 +83,12 @@ export async function fetchStudentSemestersJsonApi(
       cache: 'no-store',
     })
     if (!response.ok) {
-      throw new OpenurpApiError(response.status, response.statusText)
+      throw new EmsApiError(response.status, response.statusText)
     }
     return response.json()
   }
 
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,
@@ -151,7 +151,7 @@ export async function listSemesters(projectId: string | number, options: Semeste
 }
 
 function fetchSemesters(projectId: string | number, options: SemesterApiOptions = {}) {
-  const client = new OpenurpApiClient({
+  const client = new EmsApiClient({
     baseUrl: options.apiBaseUrl,
     headers: options.headers,
     fetcher: options.fetcher,
