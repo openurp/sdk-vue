@@ -6,6 +6,7 @@ import {
   getTeachingWeekNumber,
   normalizeTeachingWeeks,
   parseTeachingDate,
+  parseTeachingWeeks,
   teachingDateKey,
 } from '../src/utils/teachingWeek'
 
@@ -107,6 +108,24 @@ describe('teachingWeek', () => {
     expect(formatTeachingWeeks([2, 4, 6])).toBe('2-6双周')
     expect(formatTeachingWeeks([1, 3, 6])).toBe('1,3,6周')
     expect(formatTeachingWeeks([])).toBe('')
+  })
+
+  it('parseTeachingWeeks 解析常见周次文本，并与 formatTeachingWeeks 互逆', () => {
+    expect(parseTeachingWeeks('1-4周')).toEqual([1, 2, 3, 4])
+    expect(parseTeachingWeeks('1-12,14-15周')).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15])
+    expect(parseTeachingWeeks('1,3,6周')).toEqual([1, 3, 6])
+    expect(parseTeachingWeeks('1-5单周')).toEqual([1, 3, 5])
+    expect(parseTeachingWeeks('2-6双周')).toEqual([2, 4, 6])
+    expect(parseTeachingWeeks('第1-16周(单)')).toEqual([1, 3, 5, 7, 9, 11, 13, 15])
+    expect(parseTeachingWeeks('1-9周、11-13周')).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13])
+    expect(parseTeachingWeeks('第3周')).toEqual([3])
+    // 未提供/无法识别周次
+    expect(parseTeachingWeeks('')).toEqual([])
+    expect(parseTeachingWeeks(undefined)).toEqual([])
+    expect(parseTeachingWeeks('周次待定')).toEqual([])
+    // 互逆：格式化后再解析结果不变
+    const weeks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13]
+    expect(parseTeachingWeeks(formatTeachingWeeks(weeks))).toEqual(weeks)
   })
 
   it('addTeachingDays 与 teachingDateKey', () => {

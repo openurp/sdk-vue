@@ -116,3 +116,33 @@ export function formatTeachingWeeks(values: number[]): string {
   ranges.push(start === previous ? `${start}` : `${start}-${previous}`)
   return `${ranges.join(',')}周`
 }
+
+/**
+ * 解析周次文本为教学周列表（`formatTeachingWeeks` 的逆运算）。
+ *
+ * 兼容常见中文写法：`1-9周`、`1-12,14-15周`、`1,3,5周`、`1-5单周`、`2-6双周`、
+ * `第1-16周(单)`（单/双周标记可写在整段或单个区间上，也接受「单/双」简写）；
+ * 分隔符支持 `,`、`，`、`、`、`;`、`；`。
+ *
+ * 无法识别（如「周次待定」、空串）时返回空数组，调用方据此区分「未提供周次」。
+ */
+export function parseTeachingWeeks(text?: string | null): number[] {
+  const raw = (text || '').trim()
+  if (!raw) return []
+  const weeks = new Set<number>()
+  raw.split(/[,，、;；]/).forEach((piece) => {
+    const odd = piece.includes('单')
+    const even = piece.includes('双')
+    const tokens = piece.match(/\d+\s*[-~至]\s*\d+|\d+/g) || []
+    tokens.forEach((token) => {
+      const [from, to] = token.split(/\s*[-~至]\s*/).map(Number)
+      const end = Number.isFinite(to) ? to : from
+      for (let week = from; week <= end; week++) {
+        if (odd && week % 2 === 0) continue
+        if (even && week % 2 === 1) continue
+        weeks.add(week)
+      }
+    })
+  })
+  return normalizeTeachingWeeks([...weeks])
+}

@@ -49,7 +49,6 @@
                 @click="selectYear(group.schoolYear)"
               >
                 <span>{{ group.schoolYear }}</span>
-                <em v-if="group.schoolYear === currentSchoolYear">当前</em>
               </button>
             </div>
           </section>

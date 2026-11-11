@@ -1,7 +1,7 @@
 # weekstate 解析与教学周次计算
 
 > 涉及工具：`src/utils/teachingWeek.ts`（`expandTeachingDates` / `getTeachingWeekNumber` /
-> `normalizeTeachingWeeks` / `formatTeachingWeeks`）。
+> `normalizeTeachingWeeks` / `formatTeachingWeeks` / `parseTeachingWeeks`）。
 
 ## 背景
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CourseTableCourse, CourseTableDay } from './courseTable'
+import { groupCourseTableCells, hasCourseConflict, type CourseTableCell } from './courseTable'
 
 const props = withDefaults(
   defineProps<{
@@ -10,8 +11,10 @@ const props = withDefaults(
     days?: CourseTableDay[]
     /** 最大节次数；缺省按课程数据推导 */
     maxSection?: number
-    /** 颜色索引（0..4），决定色条/背景色 */
+    /** 颜色索引（0..4），决定色条/背景色；同一格子里取首门课程 */
     tone?: (course: CourseTableCourse) => number
+    /** 同格冲突判定；缺省按上课周次重叠判定（见 hasCourseConflict） */
+    conflict?: (courses: CourseTableCourse[]) => boolean
     dayLabel?: (day: CourseTableDay) => string
     clickable?: boolean
   }>(),
@@ -28,13 +31,24 @@ const props = withDefaults(
     ],
     maxSection: 0,
     tone: () => 0,
+    conflict: hasCourseConflict,
     dayLabel: (day: CourseTableDay) => day.label,
     clickable: true,
   },
 )
 
 const emit = defineEmits<{
-  'course-click': [course: CourseTableCourse, info: { day: number; startSection: number }]
+  'course-click': [
+    course: CourseTableCourse,
+    info: {
+      day: number
+      startSection: number
+      /** 同一格子的全部课程（含当前课程） */
+      courses: CourseTableCourse[]
+      /** 同格冲突标记 */
+      conflict: boolean
+    },
+  ]
 }>()
 
 const visibleDays = computed(() => {
@@ -61,28 +75,34 @@ const sections = computed(() => {
 })
 
 interface DayPlacement {
-  placed: (CourseTableCourse | null)[]
+  placed: (CourseTableCell | null)[]
   spans: Map<number, number>
   occupied: boolean[]
 }
 
-/** 每天按节次放置课程：冲突跳过，跨节记录 span（合并方向由布局决定）。 */
+/**
+ * 每天按节次放置格子：同一格子里重叠的课程已由 groupCourseTableCells 合并，
+ * 格子之间互不重叠，这里只按开始节次落格并记录 span（合并方向由布局决定）。
+ */
 const dayPlacements = computed<Map<number, DayPlacement>>(() => {
+  const cells = groupCourseTableCells(props.courses).map((cell) => ({
+    ...cell,
+    conflict: props.conflict(cell.courses),
+  }))
   const result = new Map<number, DayPlacement>()
   visibleDays.value.forEach((day) => {
     const max = sections.value.length
-    const placed = new Array<CourseTableCourse | null>(max).fill(null)
+    const placed = new Array<CourseTableCell | null>(max).fill(null)
     const spans = new Map<number, number>()
     const occupied = new Array<boolean>(max).fill(false)
-    props.courses
-      .filter((c) => c.dayOfWeek === day.value)
-      .forEach((course) => {
-        const startIdx = course.startSection - 1
-        const endIdx = course.endSection - 1
+    cells
+      .filter((cell) => cell.dayOfWeek === day.value)
+      .forEach((cell) => {
+        const startIdx = cell.startSection - 1
+        const endIdx = cell.endSection - 1
         if (startIdx < 0 || endIdx >= max || startIdx > endIdx) return
-        if (occupied.slice(startIdx, endIdx + 1).some(Boolean)) return
         occupied.fill(true, startIdx, endIdx + 1)
-        placed[startIdx] = course
+        placed[startIdx] = cell
         spans.set(startIdx, endIdx - startIdx + 1)
       })
     result.set(day.value, { placed, spans, occupied })
@@ -103,9 +123,15 @@ function courseMetaText(course: CourseTableCourse): string {
   return [course.teacher, schedule].filter(Boolean).join(' | ')
 }
 
+/** 冲突格子的悬停说明：冲突只用颜色表达，避免文字挤占格子空间。 */
+const CONFLICT_TITLE = '同一时段的多门课程上课周次重叠'
+
 type GridCell =
-  | { key: string; course: CourseTableCourse; day: number; span: number; tone: number }
-  | { key: string; course: null; span: 1 }
+  | { key: string; entry: CourseTableCell; day: number; span: number; tone: number }
+  | { key: string; entry: null; span: 1 }
+
+const cellKey = (cell: CourseTableCell): string =>
+  cell.courses.map((course) => String(course.id)).join('+')
 
 /** 转置布局（行=节次、列=天）：按节次行产出各天单元格，跨节用 rowspan。 */
 const transposedCells = (sectionIndex: number): GridCell[] => {
@@ -113,21 +139,21 @@ const transposedCells = (sectionIndex: number): GridCell[] => {
   visibleDays.value.forEach((day) => {
     const placement = dayPlacements.value.get(day.value)
     if (!placement) {
-      cells.push({ key: `${day.value}-e`, course: null, span: 1 })
+      cells.push({ key: `${day.value}-e`, entry: null, span: 1 })
       return
     }
     const span = placement.spans.get(sectionIndex)
     if (span) {
-      const course = placement.placed[sectionIndex]
+      const entry = placement.placed[sectionIndex]
       cells.push(
-        course
-          ? { key: `${day.value}-${String(course.id)}`, course, day: day.value, span, tone: props.tone(course) }
-          : { key: `${day.value}-e`, course: null, span: 1 },
+        entry
+          ? { key: `${day.value}-${cellKey(entry)}`, entry, day: day.value, span, tone: props.tone(entry.courses[0]) }
+          : { key: `${day.value}-e`, entry: null, span: 1 },
       )
     } else if (placement.occupied[sectionIndex]) {
       // 被上方 rowspan 覆盖，跳过
     } else {
-      cells.push({ key: `${day.value}-e`, course: null, span: 1 })
+      cells.push({ key: `${day.value}-e`, entry: null, span: 1 })
     }
   })
   return cells
@@ -139,30 +165,40 @@ const classicCells = (day: number): GridCell[] => {
   const placement = dayPlacements.value.get(day)
   const max = sections.value.length
   if (!placement) {
-    for (let i = 0; i < max; i++) cells.push({ key: `${day}-e${i}`, course: null, span: 1 })
+    for (let i = 0; i < max; i++) cells.push({ key: `${day}-e${i}`, entry: null, span: 1 })
     return cells
   }
   for (let i = 0; i < max; i++) {
     const span = placement.spans.get(i)
     if (span) {
-      const course = placement.placed[i]
+      const entry = placement.placed[i]
       cells.push(
-        course
-          ? { key: `${day}-${String(course.id)}`, course, day, span, tone: props.tone(course) }
-          : { key: `${day}-e${i}`, course: null, span: 1 },
+        entry
+          ? { key: `${day}-${cellKey(entry)}`, entry, day, span, tone: props.tone(entry.courses[0]) }
+          : { key: `${day}-e${i}`, entry: null, span: 1 },
       )
     } else if (placement.occupied[i]) {
       // 被左侧 colspan 覆盖，跳过
     } else {
-      cells.push({ key: `${day}-e${i}`, course: null, span: 1 })
+      cells.push({ key: `${day}-e${i}`, entry: null, span: 1 })
     }
   }
   return cells
 }
 
-function onCourseClick(course: CourseTableCourse, day: number) {
+/** 单元格点击：触发格子里第一门课程（默认渲染下每门课程也可单独点击）。 */
+function onCourseClick(cell: CourseTableCell, day: number) {
+  onCourseItemClick(cell.courses[0], cell, day)
+}
+
+function onCourseItemClick(course: CourseTableCourse, cell: CourseTableCell, day: number) {
   if (!props.clickable) return
-  emit('course-click', course, { day, startSection: course.startSection })
+  emit('course-click', course, {
+    day,
+    startSection: course.startSection,
+    courses: cell.courses,
+    conflict: cell.conflict,
+  })
 }
 </script>
 
@@ -203,28 +239,44 @@ function onCourseClick(course: CourseTableCourse, day: number) {
               :key="cell.key"
               :rowspan="cell.span"
               data-bar="top"
-              :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
+              :class="[
+                cell.entry && cell.span > 1 ? `tone-${cell.tone}` : undefined,
+                cell.entry?.conflict ? 'course-table__cell--conflict' : undefined,
+              ]"
             >
               <div
-                v-if="cell.course"
+                v-if="cell.entry"
                 class="course-table__cell"
-                :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                :class="[
+                  cell.span === 1 ? `tone-${cell.tone}` : undefined,
+                  cell.entry.conflict ? 'course-table__cell--conflict' : undefined,
+                ]"
                 :data-bar="cell.span === 1 ? 'top' : undefined"
                 role="button"
                 :tabindex="clickable ? 0 : -1"
-                @click="onCourseClick(cell.course, cell.day)"
-                @keydown.enter.prevent="clickable && onCourseClick(cell.course, cell.day)"
+                :title="cell.entry.conflict ? CONFLICT_TITLE : undefined"
+                @click="onCourseClick(cell.entry, cell.day)"
+                @keydown.enter.prevent="clickable && onCourseClick(cell.entry, cell.day)"
               >
                 <slot
                   name="course"
-                  :course="cell.course"
+                  :course="cell.entry.courses[0]"
+                  :courses="cell.entry.courses"
+                  :conflict="cell.entry.conflict"
                   :day="cell.day"
-                  :start-section="cell.course.startSection"
-                  :end-section="cell.course.endSection"
+                  :start-section="cell.entry.startSection"
+                  :end-section="cell.entry.endSection"
                   :tone="cell.tone"
                 >
-                  <span class="course-table__name">{{ cell.course.name }}<template v-if="cell.course.crn">（{{ cell.course.crn }}）</template></span>
-                  <span v-if="courseMetaText(cell.course)" class="course-table__meta">{{ courseMetaText(cell.course) }}</span>
+                  <span
+                    v-for="course in cell.entry.courses"
+                    :key="String(course.id)"
+                    class="course-table__item"
+                    @click.stop="onCourseItemClick(course, cell.entry, cell.day)"
+                  >
+                    <span class="course-table__name">{{ course.name }}<template v-if="course.crn">（{{ course.crn }}）</template></span>
+                    <span v-if="courseMetaText(course)" class="course-table__meta">{{ courseMetaText(course) }}</span>
+                  </span>
                 </slot>
               </div>
             </td>
@@ -238,28 +290,44 @@ function onCourseClick(course: CourseTableCourse, day: number) {
               :key="cell.key"
               :colspan="cell.span"
               data-bar="left"
-              :class="cell.course && cell.span > 1 ? `tone-${cell.tone}` : undefined"
+              :class="[
+                cell.entry && cell.span > 1 ? `tone-${cell.tone}` : undefined,
+                cell.entry?.conflict ? 'course-table__cell--conflict' : undefined,
+              ]"
             >
               <div
-                v-if="cell.course"
+                v-if="cell.entry"
                 class="course-table__cell"
-                :class="cell.span === 1 ? `tone-${cell.tone}` : undefined"
+                :class="[
+                  cell.span === 1 ? `tone-${cell.tone}` : undefined,
+                  cell.entry.conflict ? 'course-table__cell--conflict' : undefined,
+                ]"
                 :data-bar="cell.span === 1 ? 'left' : undefined"
                 role="button"
                 :tabindex="clickable ? 0 : -1"
-                @click="onCourseClick(cell.course, cell.day)"
-                @keydown.enter.prevent="clickable && onCourseClick(cell.course, cell.day)"
+                :title="cell.entry.conflict ? CONFLICT_TITLE : undefined"
+                @click="onCourseClick(cell.entry, cell.day)"
+                @keydown.enter.prevent="clickable && onCourseClick(cell.entry, cell.day)"
               >
                 <slot
                   name="course"
-                  :course="cell.course"
+                  :course="cell.entry.courses[0]"
+                  :courses="cell.entry.courses"
+                  :conflict="cell.entry.conflict"
                   :day="cell.day"
-                  :start-section="cell.course.startSection"
-                  :end-section="cell.course.endSection"
+                  :start-section="cell.entry.startSection"
+                  :end-section="cell.entry.endSection"
                   :tone="cell.tone"
                 >
-                  <span class="course-table__name">{{ cell.course.name }}<template v-if="cell.course.crn">（{{ cell.course.crn }}）</template></span>
-                  <span v-if="courseMetaText(cell.course)" class="course-table__meta">{{ courseMetaText(cell.course) }}</span>
+                  <span
+                    v-for="course in cell.entry.courses"
+                    :key="String(course.id)"
+                    class="course-table__item"
+                    @click.stop="onCourseItemClick(course, cell.entry, cell.day)"
+                  >
+                    <span class="course-table__name">{{ course.name }}<template v-if="course.crn">（{{ course.crn }}）</template></span>
+                    <span v-if="courseMetaText(course)" class="course-table__meta">{{ courseMetaText(course) }}</span>
+                  </span>
                 </slot>
               </div>
             </td>
@@ -276,6 +344,7 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   --ct-row-height: 50px;
   --ct-day-row-height: 56px;
   --ct-head-height: 26px;
+  --ct-min-width: 100%;
   --ct-day-col-width: 116px;
   --ct-section-col-width: 46px;
   --ct-border: #e5eaf0;
@@ -293,11 +362,17 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   --ct-tone-3-bg: #fbf4e9;
   --ct-tone-4: #b9657b;
   --ct-tone-4-bg: #faeff2;
+  /* 同一格子内多门课程周次冲突时的标记色（红色色条 + 斜纹底） */
+  --ct-conflict: #d54941;
+  --ct-conflict-bg: #fdecec;
+  --ct-conflict-bg-alt: #f8d7d5;
+  /* 同一格子内课程之间的分隔线 */
+  --ct-divider: #cfd9e4;
 }
 
 .course-table__grid {
   width: 100%;
-  min-width: 860px;
+  min-width: var(--ct-min-width);
   border-collapse: collapse;
   table-layout: auto;
 }
@@ -363,14 +438,16 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   vertical-align: top;
 }
 /* 首列（行/列标签）收窄：经典=星期（周一…），转置=节次（1节…）。
+   table-layout:auto 会把剩余宽度继续分给有 width 的首列，单日视图下尤其明显；
+   width:1% 让首列收缩到 min-width，剩余空间交给天/节次数据列。
    注意转置布局的天列/经典的表头节次列仍是数据列，保持 --ct-day-col-width /
    --ct-section-col-width 不变。 */
 .course-table--classic .course-table__day-col {
-  width: var(--ct-day-label-width, 52px);
+  width: 1%;
   min-width: var(--ct-day-label-width, 52px);
 }
 .course-table--transposed .course-table__section-col {
-  width: var(--ct-section-label-width, 34px);
+  width: 1%;
   min-width: var(--ct-section-label-width, 34px);
 }
 
@@ -426,23 +503,51 @@ function onCourseClick(course: CourseTableCourse, day: number) {
   height: 100%;
 }
 
+/* 同一格子的多门课程：逐条展示，条目之间用虚线分隔。 */
+.course-table__item {
+  display: block;
+  cursor: pointer;
+}
+.course-table__item + .course-table__item {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px dashed var(--ct-divider);
+}
+/* 冲突格子：整格红色色条 + 斜纹底，避免与天色调（如周五的粉色）混淆。
+   规则放在 tone-* 之后，同优先级时覆盖其背景色。 */
+.course-table td[data-bar="top"].course-table__cell--conflict {
+  border-top-color: var(--ct-conflict);
+  background: repeating-linear-gradient(45deg, var(--ct-conflict-bg) 0 6px, var(--ct-conflict-bg-alt) 6px 12px);
+}
+.course-table td[data-bar="left"].course-table__cell--conflict {
+  border-left-color: var(--ct-conflict);
+  background: repeating-linear-gradient(45deg, var(--ct-conflict-bg) 0 6px, var(--ct-conflict-bg-alt) 6px 12px);
+}
+.course-table__cell.course-table__cell--conflict {
+  background: repeating-linear-gradient(45deg, var(--ct-conflict-bg) 0 6px, var(--ct-conflict-bg-alt) 6px 12px);
+}
+.course-table__cell[data-bar="top"].course-table__cell--conflict {
+  border-top-color: var(--ct-conflict);
+}
+.course-table__cell[data-bar="left"].course-table__cell--conflict {
+  border-left-color: var(--ct-conflict);
+}
+
+/* 课程名与第二行文本允许换行：table-layout:auto 下 nowrap 的 min-content
+   等于整行宽度，会把列撑宽（省略号也不会生效），多门课程同格时更明显。 */
 .course-table__name {
   display: block;
-  overflow: hidden;
   margin-bottom: 1px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .course-table__meta {
   display: block;
-  overflow: hidden;
   font-size: 10px;
   line-height: 1.35;
   color: var(--ct-meta);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 </style>
