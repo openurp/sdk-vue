@@ -3,6 +3,9 @@
   "version": "0.0.3",
   "license": "GPL-3.0-or-later",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
@@ -16,6 +19,10 @@
       "types": "./dist/wide.d.ts",
       "default": "./dist/wide.js"
     },
+    "./schedule": {
+      "types": "./dist/schedule.d.ts",
+      "default": "./dist/schedule.js"
+    },
     "./dist/index.css": "./dist/index.css",
     "./styles/app-shell.css": "./src/styles/app-shell.css"
   },
@@ -28,8 +35,10 @@
     "prepublishOnly": "pnpm run build",
     "release:prepare": "bash scripts/release-prepare.sh",
     "release:finish": "bash scripts/release-finish.sh",
+    "release:dev": "bash scripts/release-dev.sh",
     "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "publishLocal": "bash scripts/publish-local.sh"
   },
   "peerDependencies": {
     "tdesign-icons-vue-next": "^0.4.0",
@@ -38,7 +47,8 @@
     "vue-router": "^4.5.0"
   },
   "dependencies": {
-    "@beangle/ems-app": "link:../../beangle/ems/packages/ems-app"
+    "@beangle/ems-app": "^0.0.3",
+    "@beangle/bui-vue": "^0.0.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",

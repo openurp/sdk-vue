@@ -8,9 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@beangle/bui-vue':
+        specifier: ^0.0.5
+        version: 0.0.5(tdesign-icons-vue-next@0.4.7(vue@3.5.40(typescript@5.9.2)))(tdesign-vue-next@1.20.5(vue@3.5.40(typescript@5.9.2)))(vue@3.5.40(typescript@5.9.2))
       '@beangle/ems-app':
-        specifier: link:../../beangle/ems/packages/ems-app
-        version: link:../../beangle/ems/packages/ems-app
+        specifier: ^0.0.3
+        version: 0.0.3(tdesign-icons-vue-next@0.4.7(vue@3.5.40(typescript@5.9.2)))(tdesign-vue-next@1.20.5(vue@3.5.40(typescript@5.9.2)))(vue-router@4.6.4(vue@3.5.40(typescript@5.9.2)))(vue@3.5.40(typescript@5.9.2))
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^6.0.1
@@ -79,6 +82,26 @@ packages:
   '@babel/types@7.29.8':
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
+
+  '@beangle/bui-vue@0.0.5':
+    resolution: {integrity: sha512-KKfgETsFhcP9RGQ65J4/IxyllSVhM1I8itjbrTLtRlMBmabbAhkHemncGCqQ2XDKQPJI5sEDv226Y+q97UBLSA==}
+    peerDependencies:
+      tdesign-icons-vue-next: ^0.4.4
+      tdesign-vue-next: ^1.20.1
+      vue: ^3.5.22
+
+  '@beangle/ems-app@0.0.3':
+    resolution: {integrity: sha512-pJygOWXSJYWOHSI8w3dQAncA45fQuIpZDMysqaxm5U11w/qsFUOjGVHGY/iq6pZUNGzkZbX/4wO3hhgDvxlC3g==}
+    peerDependencies:
+      tdesign-icons-vue-next: '*'
+      tdesign-vue-next: '*'
+      vue: ^3.5.0
+      vue-router: ^4.5.0
+    peerDependenciesMeta:
+      tdesign-icons-vue-next:
+        optional: true
+      tdesign-vue-next:
+        optional: true
 
   '@bramus/specificity@2.4.2':
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
@@ -1145,6 +1168,21 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@beangle/bui-vue@0.0.5(tdesign-icons-vue-next@0.4.7(vue@3.5.40(typescript@5.9.2)))(tdesign-vue-next@1.20.5(vue@3.5.40(typescript@5.9.2)))(vue@3.5.40(typescript@5.9.2))':
+    dependencies:
+      tdesign-icons-vue-next: 0.4.7(vue@3.5.40(typescript@5.9.2))
+      tdesign-vue-next: 1.20.5(vue@3.5.40(typescript@5.9.2))
+      vue: 3.5.40(typescript@5.9.2)
+
+  '@beangle/ems-app@0.0.3(tdesign-icons-vue-next@0.4.7(vue@3.5.40(typescript@5.9.2)))(tdesign-vue-next@1.20.5(vue@3.5.40(typescript@5.9.2)))(vue-router@4.6.4(vue@3.5.40(typescript@5.9.2)))(vue@3.5.40(typescript@5.9.2))':
+    dependencies:
+      '@beangle/bui-vue': 0.0.5(tdesign-icons-vue-next@0.4.7(vue@3.5.40(typescript@5.9.2)))(tdesign-vue-next@1.20.5(vue@3.5.40(typescript@5.9.2)))(vue@3.5.40(typescript@5.9.2))
+      vue: 3.5.40(typescript@5.9.2)
+      vue-router: 4.6.4(vue@3.5.40(typescript@5.9.2))
+    optionalDependencies:
+      tdesign-icons-vue-next: 0.4.7(vue@3.5.40(typescript@5.9.2))
+      tdesign-vue-next: 1.20.5(vue@3.5.40(typescript@5.9.2))
 
   '@bramus/specificity@2.4.2':
     dependencies:

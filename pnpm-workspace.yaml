@@ -1,2 +1,6 @@
 allowBuilds:
   esbuild: true
+
+# 本包依赖团队自有的 @beangle/ems-app：开发预览版刚发布就要能装上，
+# 关闭 pnpm 默认 24 小时的发布成熟期门槛，否则会退回旧版本。
+minimumReleaseAge: 0

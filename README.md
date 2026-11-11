@@ -61,6 +61,7 @@ src/
   composables/
   types/
   utils/
+  schedule.ts    # 纯 TypeScript 课表逻辑入口（PC / 移动端共用，无 Vue/TDesign 依赖）
   wide.ts        # 宽屏/桌面端专用组件入口
 ```
 
@@ -74,6 +75,8 @@ src/
 import { CourseTable } from '@openurp/sdk-vue/wide'
 // 移动端：主入口里没有这些组件，import 不到即不会误用
 import { SemesterPicker } from '@openurp/sdk-vue'
+// PC 与移动端共用课表计算：纯 TS 子入口，不会带入 Vue/TDesign/路由
+import { buildScheduleSessions } from '@openurp/sdk-vue/schedule'
 ```
 
 规则：新增只适合宽屏的组件时，放在 `src/wide.ts` 导出（对应子路径
@@ -89,23 +92,41 @@ import { SemesterPicker } from '@openurp/sdk-vue'
 | 位置 | 内容 |
 |---|---|
 | `src/index.ts` | `export * from '@beangle/ems-app'` + `'@beangle/ems-app/pc'`，并引入壳层样式 |
-| `src/api/{code,semester,student,context}.ts` | 直接从 `@beangle/ems-app` 取 `OpenurpApiClient` / `OpenurpApiError` |
+| `src/api/{code,semester,student,context}.ts` | 直接从 `@beangle/ems-app` 取 `EmsApiClient` / `EmsApiError` |
 | `src/kiosk.ts` | 再导出扫码登录 API 与 `useQrLogin`，保持 `@openurp/sdk-vue/kiosk` 可用 |
 
-因此既有消费端的 `import { ... } from '@openurp/sdk-vue'` 不用改。本地开发要注意两点：
+因此既有消费端的 `import { ... } from '@openurp/sdk-vue'` 不用改。开发时注意两点：
 
-1. `dependencies` 里用 `link:` 指向本地 `beangle/ems/packages/ems-app`；
-2. 本包按 `exports` 解析到 ems-app 的 `dist`，**改完 ems-app 要先构建它**
-   （`pnpm --filter @beangle/ems-app build`），否则 typecheck / build / test 会用到旧产物。
+1. `dependencies` 里是 registry 上的版本号（当前 `^0.0.3`），**不写 `link:`**——
+   要联调 ems-app 的改动，先在上游发开发预览版（`beangle/ems/packages/ems-app` 下
+   `pnpm release:dev`），再 `pnpm install`；
+2. 本包按 `exports` 解析到 ems-app 的 `dist`，拿不到新版本时 typecheck / build / test
+   会继续用旧产物，注意确认 `pnpm why @beangle/ems-app` 的版本；
+3. 本包与 ems-app 的产物都按 **bundler** 解析（ems-app 的 `dist/pc.js` 用
+   `tdesign-vue-next/es/dropdown` 这类目录导入，tdesign 的 es 模块还带 `style/css.mjs`）。
+   vitest / SSR / node 脚本等 Node 原生 ESM 环境必须把它们放进 inline 名单，
+   否则报 `Directory import ... is not supported`：
+
+```ts
+// vitest.config.ts
+test: {
+  server: {
+    deps: {
+      inline: ['@openurp/sdk-vue', '@beangle/ems-app', 'tdesign-vue-next'],
+    },
+  },
+}
+```
 
 `@openurp/sdk-vue/styles/app-shell.css` 是过渡期副本（正式出处见 ems-app），
 消费端迁移到 `@beangle/ems-app` 后，上述再导出与副本都可以删除。
-发布前 `scripts/release-prepare.sh` 会拦截仍带 `link:` 的依赖。
+`scripts/release-prepare.sh` / `release-dev.sh` 会拦截 dependencies 里残留的 `link:` / `file:`。
 
 ## Docs
 
 - [`docs/teaching-week.md`](docs/teaching-week.md) — weekstate 位序约定与教学周次换算（反转后第 0 位 = 相对 startOn 的第 0 周）
 - [`docs/course-table.md`](docs/course-table.md) — CourseTable 的格子模型、同格多课程与冲突标记
+- [`docs/schedule.md`](docs/schedule.md) — 课表日期、筛选、预览与授课计划对齐
 
 ## Code Picker
 

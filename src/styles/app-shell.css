@@ -6,6 +6,10 @@
  * src/styles/app-shell.css（随其 dist/index.css 发布）。本文件仅为兼容既有
  * 子路径导入 '@openurp/sdk-vue/styles/app-shell.css' 而保留，
  * 消费端迁移到 @beangle/ems-app 后可删除。
+ *
+ * 侧栏菜单的样式不在这里：AppShell 的菜单已改为 @beangle/bui-vue 的 SideNav
+ * （规格取自 EMS 门户侧栏），样式入口 '@beangle/bui-vue/styles/side-nav.css'
+ * 由本包 index.ts 引入并打进 dist/index.css。
  */
 .bui-app-shell {
   --appshell-sidebar-width: 156px;
@@ -22,6 +26,10 @@
   --appshell-content-bg: #f4f6f9;
   --appshell-surface: #fff;
   --appshell-border: #dee2e6;
+  /* 侧栏菜单色板转交给 @beangle/bui-vue 的 SideNav（详见 ems-app 的同名文件）。 */
+  --bui-side-nav-text: var(--appshell-sidebar-text);
+  --bui-side-nav-muted: var(--appshell-sidebar-muted);
+  --bui-side-nav-hover-bg: var(--appshell-sidebar-hover);
   min-height: 100vh;
   display: flex;
   background: var(--appshell-bg);
@@ -125,62 +133,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 8px 0 12px;
-}
-
-.bui-app-shell__nav-section {
-  padding: 6px 14px 8px;
-  font-size: 0.7rem;
-  color: var(--appshell-sidebar-muted);
-}
-
-.bui-app-shell__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 0 8px;
-}
-
-.bui-app-shell__nav-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 2.1rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 0.25rem;
-  color: var(--appshell-sidebar-text);
-  text-decoration: none;
-  font-size: 0.875rem;
-}
-
-.bui-app-shell__nav-item:hover {
-  background: var(--appshell-sidebar-hover);
-  color: var(--appshell-sidebar-text);
-  text-decoration: none;
-}
-
-.bui-app-shell__nav-item.is-active {
-  background: var(--appshell-sidebar-active-bg);
-  color: var(--appshell-sidebar-active-color);
-  box-shadow: 0 0 1px rgba(0, 0, 0, 0.08);
-  font-weight: 600;
-}
-
-.bui-app-shell__nav-icon {
-  width: 1.1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  opacity: 0.85;
-  font-size: 1rem;
-}
-
-.bui-app-shell__nav-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* 与门户侧栏一致：左缘留 0.5rem（菜单项自己不带左内边距，激活条的起点由这里定），上下各 8px。 */
+  padding: 8px 0 8px 0.5rem;
 }
 
 .bui-app-shell__right {
@@ -390,8 +344,6 @@
 
 @media (max-width: 900px) {
   .bui-app-shell__brand-text,
-  .bui-app-shell__nav-label,
-  .bui-app-shell__nav-section,
   .bui-app-shell__user-name,
   .bui-app-shell__module-nav {
     display: none;
@@ -402,9 +354,4 @@
     flex-basis: 3rem;
   }
 
-  .bui-app-shell__nav-item {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-  }
 }
